@@ -3,6 +3,7 @@ import os
 import shutil
 
 from matplotlib import pyplot as plt
+from matplotlib.lines import Line2D
 import numpy as np
 import xarray as xr
 
@@ -100,22 +101,74 @@ fig_duration.tight_layout()
 
 
 if plot_time_series:
-    fig_vaf = plt.figure(2, figsize=(10, 10), facecolor='w')
+    fig_vaf = plt.figure(2, figsize=(14, 8), facecolor='w')
+
+    qcols = {'03': 'r',
+             '05': 'g',
+             '10': 'b'}
+    mcols = {'05': 'r',
+             '50': 'g',
+             '95': 'b'}
+    ecols = {'ccsm4': 'r',
+             'hadgem2': 'g',
+             'cesm2': 'b',
+             'ukesm1': 'k'}
+    hcols = {'off': 'r',
+             'on': 'b'}
+    lw = 0.75
                
-    nrow = 1
-    ncol = 1
+    nrow = 2
+    ncol = 3
 
     ax_vaf = fig_vaf.add_subplot(nrow, ncol, 1)
-    plt.xlabel('Year')
-    plt.ylabel('VAF (Gt)')
+    plt.title('all runs')
+    ax_vafq = fig_vaf.add_subplot(nrow, ncol, 2)
+    plt.title('sorted by q')
+    ax_vafm = fig_vaf.add_subplot(nrow, ncol, 3)
+    plt.title('sorted by m')
+    ax_vafe = fig_vaf.add_subplot(nrow, ncol, 4)
+    plt.title('sorted by e')
+    ax_vafh = fig_vaf.add_subplot(nrow, ncol, 5)
+    plt.title('sorted by h')
+
+    for ax in fig_vaf.axes:
+        ax.set_xlabel('Year')
+        ax.set_ylabel('VAF (Gt)')
+
     for i, run in enumerate(ens_info):
         run_name = run['name']
         gs_path = os.path.join(dataset_destination, f'{run_name}.nc')
         if os.path.isfile(gs_path):
             ds = xr.open_dataset(gs_path, decode_times=False, decode_cf=False)
-            yrs = ds.daysSinceStart.values / 365.0
+            yrs = ds.daysSinceStart.values / 365.0 + 2000.0
             vaf = ds.volumeAboveFloatation.values * 1.0e12 / rhoi
-            ax_vaf.plot(yrs, vaf, '-')
+            ax_vaf.plot(yrs, vaf, '-', linewidth=lw)
+
+            ax_vafq.plot(yrs, vaf, color=qcols[run['q']], linewidth=lw)
+            ax_vafm.plot(yrs, vaf, color=mcols[run['m']], linewidth=lw)
+            ax_vafe.plot(yrs, vaf, color=ecols[run['e']], linewidth=lw)
+            ax_vafh.plot(yrs, vaf, color=hcols[run['h']], linewidth=lw)
+
+    # create custom legends
+    leg_el = []
+    for key, val in qcols.items():
+        leg_el.append(Line2D([0], [0], color=val, lw=4, label=key))
+    ax_vafq.legend(handles=leg_el, loc='lower left')
+    leg_el = []
+    for key, val in mcols.items():
+        leg_el.append(Line2D([0], [0], color=val, lw=4, label=key))
+    ax_vafm.legend(handles=leg_el, loc='lower left')
+    leg_el = []
+    for key, val in ecols.items():
+        leg_el.append(Line2D([0], [0], color=val, lw=4, label=key))
+    ax_vafe.legend(handles=leg_el, loc='lower left')
+    leg_el = []
+    for key, val in hcols.items():
+        leg_el.append(Line2D([0], [0], color=val, lw=4, label=key))
+    ax_vafh.legend(handles=leg_el, loc='lower left')
+
+    fig_vaf.tight_layout()
+
 
 
 plt.show()
