@@ -4,6 +4,7 @@ import shutil
 
 from matplotlib import pyplot as plt
 import numpy as np
+import xarray as xr
 
 plot_time_series = True
 
@@ -54,9 +55,16 @@ for runset in sorted(glob.glob(os.path.join(runsets_base, 'q*m*'))):
         # copy globalStats to common location with naming convention
         gs_path = os.path.join(runpath, 'output', 'globalStats.nc')
         if os.path.isfile(gs_path):
-            shutil.copyfile(gs_path,
-                            os.path.join(dataset_destination,
-                                         f'{std_name}.nc'))
+            ds = xr.open_dataset(gs_path, decode_times=False, decode_cf=False)
+            years = ds.daysSinceStart.values / 365.0
+            inds = np.where(years == np.round(years))
+            #vaf_even = ds.volumeAboveFloatation[inds]
+            days_even = ds.daysSinceStart[inds]
+            ds_out = days_even.to_dataset(name = 'daysSinceStart')
+            ds_out['volumeAboveFloatation'] = ds.volumeAboveFloatation[inds]
+            #ds_out = xr.Dataset(data_vars={years_even, vaf_even})
+            ds_out.to_netcdf(os.path.join(dataset_destination,
+                                          f'{std_name}.nc'))
 
 # plot end year for all runs
 fig_duration = plt.figure(99, figsize=(8, 8), facecolor='w')
