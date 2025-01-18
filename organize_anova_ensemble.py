@@ -7,6 +7,7 @@ import numpy as np
 import xarray as xr
 
 plot_time_series = True
+rhoi = 910.0
 
 dataset_destination = '/pscratch/sd/h/hoffman2/anova-results'
 
@@ -67,7 +68,7 @@ for runset in sorted(glob.glob(os.path.join(runsets_base, 'q*m*'))):
                                           f'{std_name}.nc'))
 
 # plot end year for all runs
-fig_duration = plt.figure(99, figsize=(8, 8), facecolor='w')
+fig_duration = plt.figure(1, figsize=(8, 8), facecolor='w')
 nrow = 3
 ncol = 1
 
@@ -99,8 +100,23 @@ fig_duration.tight_layout()
 
 
 if plot_time_series:
+    fig_vaf = plt.figure(2, figsize=(10, 10), facecolor='w')
+               
+    nrow = 1
+    ncol = 1
+
+    ax_vaf = fig_vaf.add_subplot(nrow, ncol, 1)
+    plt.xlabel('Year')
+    plt.ylabel('VAF (Gt)')
     for i, run in enumerate(ens_info):
-        pass
+        run_name = run['name']
+        gs_path = os.path.join(dataset_destination, f'{run_name}.nc')
+        if os.path.isfile(gs_path):
+            ds = xr.open_dataset(gs_path, decode_times=False, decode_cf=False)
+            yrs = ds.daysSinceStart.values / 365.0
+            vaf = ds.volumeAboveFloatation.values * 1.0e12 / rhoi
+            ax_vaf.plot(yrs, vaf, '-')
+
 
 plt.show()
 
