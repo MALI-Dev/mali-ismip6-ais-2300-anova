@@ -29,6 +29,7 @@ m_list = [0] * n_files
 e_list = [0] * n_files
 h_list = [0] * n_files
 slr_list = np.zeros((n_files, n_years)) * np.nan
+valid_runs_per_year = np.zeros((n_years,))
 
 for i, file_path in enumerate(file_list):
     run_name = os.path.basename(file_path).split('.')[0]
@@ -64,6 +65,7 @@ for yr_idx, yr in enumerate(year_list):
     # (not necessary when ensemble is complete)
     valid_run_ind = np.nonzero(np.logical_not(np.isnan(slr_list[:, yr_idx])))[0]
     n_valid = len(valid_run_ind)
+    valid_runs_per_year[yr_idx] = n_valid
     if len(valid_run_ind) < 20:
         # give up if the number of valid runs has dwindled
         break
@@ -160,5 +162,15 @@ plt.legend()
 plt.xlabel('Year')
 plt.ylabel('percentage of variance')
 
+
+fig = plt.figure(2, figsize=(8, 6), facecolor='w')
+nrow = 1
+ncol = 1
+
+ax = fig.add_subplot(111)
+plt.bar(year_list, valid_runs_per_year, width=0.9)
+plt.xlabel('Year')
+plt.ylabel('Number of runs used')
+plt.ylim([0, 72])
 
 plt.show()
