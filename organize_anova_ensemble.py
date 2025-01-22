@@ -55,16 +55,24 @@ for runset in sorted(glob.glob(os.path.join(runsets_base, 'q*m*'))):
         ens_info.append(run_dict)
 
         # copy globalStats to common location with naming convention
-        gs_path = os.path.join(runpath, 'output', 'globalStats.nc')
-        if os.path.isfile(gs_path):
+        gs_path1 = os.path.join(runpath, 'output', 'globalStats.nc.cleaned')
+        gs_path2 = os.path.join(runpath, 'output', 'globalStats.nc')
+        have_gs = False
+        if os.path.isfile(gs_path1):
+            gs_path = gs_path1
+            have_gs = True
+        elif os.path.isfile(gs_path2):
+            gs_path = gs_path2
+            have_gs = True
+        else:
+            print("  globalStats not found: SKIPPING")
+        if have_gs == True:
             ds = xr.open_dataset(gs_path, decode_times=False, decode_cf=False)
             years = ds.daysSinceStart.values / 365.0
             inds = np.where(years == np.round(years))
-            #vaf_even = ds.volumeAboveFloatation[inds]
             days_even = ds.daysSinceStart[inds]
             ds_out = days_even.to_dataset(name = 'daysSinceStart')
             ds_out['volumeAboveFloatation'] = ds.volumeAboveFloatation[inds]
-            #ds_out = xr.Dataset(data_vars={years_even, vaf_even})
             ds_out.to_netcdf(os.path.join(dataset_destination,
                                           f'{std_name}.nc'))
 
