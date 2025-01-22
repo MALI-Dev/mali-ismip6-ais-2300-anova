@@ -1,0 +1,4 @@
+
+Create each set of 8 runs by adjusting melt and exponent files and ens. name in cfg and
+exponent in yaml:
+/global/cfs/cdirs/fanssie/users/hoffman2/compass/ismip6_ais_2300_4kmDI_anova_ensemble_gpu/compass/landice/tests/ismip6_run/ismip6_ais_proj2300$ compass setup -n 94 -f ismip6_ais_proj2300_4km_nersc.cfg -w /pscratch/sd/h/hoffman2/ismip6_ais_2300_4kmDI_anova_ensemble_gpu/q05m50 -p /global/cfs/cdirs/fanssie/software/mali-develop-2024-10-14
