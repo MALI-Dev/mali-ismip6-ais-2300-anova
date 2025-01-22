@@ -20,7 +20,7 @@ rhosw = 1028.0
 file_list = sorted(glob.glob(os.path.join(dataset_path, '*nc')))
 n_files = len(file_list)
 
-year_list = np.arange(2016, 2301)
+year_list = np.arange(2016, 2301 + 1)
 #year_list = np.arange(2050, 2051)
 n_years = len(year_list)
 
