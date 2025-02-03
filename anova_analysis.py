@@ -41,6 +41,10 @@ for i, file_path in enumerate(file_list):
     ds = xr.open_dataset(file_path, decode_times=False, decode_cf=False)
 
     vaf = ds.volumeAboveFloatation.values
+    inYrs  = ds.daysSinceStart.values / 365.
+    assert len(vaf) <= slr_list.shape[1], \
+           print(f'Error: len(vaf)={len(vaf)}; slr_list len={slr_list.shape[1]}',
+              'yrs:', inYrs)
     slr_list[i, :len(vaf)] = -1.0 * (vaf - vaf[0]) / 3.62e14 * rhoi / rhosw
 
 
@@ -168,7 +172,7 @@ nrow = 1
 ncol = 1
 
 ax = fig.add_subplot(111)
-plt.bar(year_list, valid_runs_per_year, width=0.9)
+plt.bar(year_list, valid_runs_per_year, width=1.0)
 plt.xlabel('Year')
 plt.ylabel('Number of runs used')
 plt.ylim([0, 72])

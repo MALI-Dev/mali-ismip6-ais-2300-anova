@@ -26,6 +26,8 @@ exp_list = {'expAE02_04': {'esm': 'ccsm4', 'hydro': 'off'},
             'expAE13_04': {'esm': 'cesm2', 'hydro': 'on'},
             'expAE14_04': {'esm': 'ukesm1', 'hydro': 'on'}}
 
+yr_list = np.arange(16, 302)
+
 for runset in sorted(glob.glob(os.path.join(runsets_base, 'q*m*'))):
     # get runset name
     runset_name = os.path.basename(runset)
@@ -69,7 +71,14 @@ for runset in sorted(glob.glob(os.path.join(runsets_base, 'q*m*'))):
         if have_gs == True:
             ds = xr.open_dataset(gs_path, decode_times=False, decode_cf=False)
             years = ds.daysSinceStart.values / 365.0
-            inds = np.where(years == np.round(years))
+            #inds = np.where(years == np.round(years))
+            # find indices more carefully b/c of a case of two indices with the
+            # same time in one of the files
+            inds = list()
+            for yr in yr_list:
+                ind = np.where(years == yr)[-1]
+                if len(ind) > 0:
+                    inds.append(ind[0])
             days_even = ds.daysSinceStart[inds]
             ds_out = days_even.to_dataset(name = 'daysSinceStart')
             ds_out['volumeAboveFloatation'] = ds.volumeAboveFloatation[inds]
