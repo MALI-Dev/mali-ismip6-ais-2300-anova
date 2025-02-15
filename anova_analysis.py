@@ -11,6 +11,7 @@ import xarray as xr
 import statsmodels.api as sm
 from statsmodels.formula.api import ols
 
+interactions = 3
 
 dataset_path = '/pscratch/sd/h/hoffman2/anova-results'
 rhoi = 910.0
@@ -61,9 +62,14 @@ var_qh = np.zeros((n_years,)) * np.nan
 var_me = np.zeros((n_years,)) * np.nan
 var_mh = np.zeros((n_years,)) * np.nan
 var_eh = np.zeros((n_years,)) * np.nan
+var_qme = np.zeros((n_years,)) * np.nan
+var_qmh = np.zeros((n_years,)) * np.nan
+var_qeh = np.zeros((n_years,)) * np.nan
+var_meh = np.zeros((n_years,)) * np.nan
 var_qmeh = np.zeros((n_years,)) * np.nan
 var_res = np.zeros((n_years,)) * np.nan
 var_all = np.zeros((n_years,)) * np.nan
+r2 = np.zeros((n_years,)) * np.nan
 
 for yr_idx, yr in enumerate(year_list):
     print(f'\n***** Year={yr} (ind={yr_idx}) *****\n')
@@ -84,17 +90,32 @@ for yr_idx, yr in enumerate(year_list):
                        'h': [h_list[i] for i in valid_run_ind],
                        'slr': slr_vals})
     print(df)
-    #model = ols("""slr ~ C(q) + C(m) + C(e) + C(h) +
-    #           C(q):C(m) + C(q):C(e) + C(q):C(h) +
-    #           C(m):C(e) + C(m):C(h) +
-    #           C(e):C(h) +
-    #           C(q):C(m):C(e):C(h)""", data=df).fit()
-    model = ols("""slr ~ C(q) + C(m) + C(e) + C(h)""", data=df).fit()
-    #model = ols("""slr ~ C(m) + C(e) + C(h) +
-    #           C(m):C(e) + C(m):C(h) + C(e):C(h) +
-    #           C(m):C(e):C(h)""", data=df).fit()
+    if interactions == 1:
+        model = ols("""slr ~ C(q) + C(m) + C(e) + C(h)""", data=df).fit()
+    elif interactions == 2:
+        model = ols("""slr ~ C(q) + C(m) + C(e) + C(h) +
+                    C(q):C(m) + C(q):C(e) + C(q):C(h) +
+                    C(m):C(e) + C(m):C(h) +
+                    C(e):C(h)""", data=df).fit()
+    elif interactions == 3:
+        model = ols("""slr ~ C(q) + C(m) + C(e) + C(h) +
+                    C(q):C(m) + C(q):C(e) + C(q):C(h) +
+                    C(m):C(e) + C(m):C(h) +
+                    C(e):C(h) +
+                    C(q):C(m):C(e) + C(q):C(m):C(h) + C(q):C(e):C(h) +
+                    C(m):C(e):C(h)""", data=df).fit()
+    elif interactions == 4:
+        model = ols("""slr ~ C(q) + C(m) + C(e) + C(h) +
+                    C(q):C(m) + C(q):C(e) + C(q):C(h) +
+                    C(m):C(e) + C(m):C(h) +
+                    C(e):C(h) +
+                    C(q):C(m):C(e) + C(q):C(m):C(h) + C(q):C(e):C(h) +
+                    C(m):C(e):C(h) +
+                    C(m):C(e):C(h) +
+                    C(q):C(m):C(e):C(h)""", data=df).fit()
 
-    print(model)
+    print(model.summary())
+    r2[yr_idx] = model.rsquared
 
     anova_out = sm.stats.anova_lm(model, typ=2)
     print(anova_out)
@@ -107,25 +128,44 @@ for yr_idx, yr in enumerate(year_list):
     idx += 1
     var_h[yr_idx] = anova_out.sum_sq[idx] / n_valid
     idx += 1
-#    var_qm[yr_idx] = anova_out.sum_sq[idx] / n_valid
-#    idx += 1
-#    var_qe[yr_idx] = anova_out.sum_sq[idx] / n_valid
-#    idx += 1
-#    var_qh[yr_idx] = anova_out.sum_sq[idx] / n_valid
-#    idx += 1
-#    var_me[yr_idx] = anova_out.sum_sq[idx] / n_valid
-#    idx += 1
-#    var_mh[yr_idx] = anova_out.sum_sq[idx] / n_valid
-#    idx += 1
-#    var_eh[yr_idx] = anova_out.sum_sq[idx] / n_valid
-#    idx += 1
-#    var_qmeh[yr_idx] = anova_out.sum_sq[idx] / n_valid
-#    idx += 1
+    if interactions >= 2:
+       var_qm[yr_idx] = anova_out.sum_sq[idx] / n_valid
+       idx += 1
+       var_qe[yr_idx] = anova_out.sum_sq[idx] / n_valid
+       idx += 1
+       var_qh[yr_idx] = anova_out.sum_sq[idx] / n_valid
+       idx += 1
+       var_me[yr_idx] = anova_out.sum_sq[idx] / n_valid
+       idx += 1
+       var_mh[yr_idx] = anova_out.sum_sq[idx] / n_valid
+       idx += 1
+       var_eh[yr_idx] = anova_out.sum_sq[idx] / n_valid
+       idx += 1
+    if interactions >= 3:
+       var_qme[yr_idx] = anova_out.sum_sq[idx] / n_valid
+       idx += 1
+       var_qmh[yr_idx] = anova_out.sum_sq[idx] / n_valid
+       idx += 1
+       var_qeh[yr_idx] = anova_out.sum_sq[idx] / n_valid
+       idx += 1
+       var_meh[yr_idx] = anova_out.sum_sq[idx] / n_valid
+       idx += 1
+    if interactions >= 4:
+       var_qmeh[yr_idx] = anova_out.sum_sq[idx] / n_valid
+       idx += 1
+
     var_res[yr_idx] = anova_out.sum_sq[idx] / n_valid
-    var_all[yr_idx] = np.std(slr_vals)**2
+    var_all[yr_idx] = np.std(slr_vals, ddof=1)**2  # TODO: not sure if ddof should be 0 or 1
 
 #var_tot = var_m + var_e + var_h + var_me + var_mh + var_eh + var_qmeh + var_res
 var_tot = var_m + var_e + var_h + var_res
+if interactions >= 2:
+    var_tot += var_qm + var_qe + var_qh + var_me + var_mh + var_eh
+if interactions >= 3:
+    var_tot += var_qme + var_qmh + var_qeh + var_meh
+if interactions >= 4:
+    var_tot += var_qmeh
+
 
 # plot
 
@@ -136,24 +176,34 @@ ncol = 1
 ax1 = fig.add_subplot(nrow, ncol, 1)
 thk=2
 thn=0.5
+ls3='--'
+ls4=':'
 ax1.plot(year_list, np.sqrt(var_all), label='all', color='k', linewidth=thk, linestyle=':')
 ax1.plot(year_list, np.sqrt(var_tot), label='total', color='k', linewidth=thk)
 ax1.plot(year_list, np.sqrt(var_q), label='q', linewidth=thk)
 ax1.plot(year_list, np.sqrt(var_m), label='m', linewidth=thk)
 ax1.plot(year_list, np.sqrt(var_e), label='e', linewidth=thk)
 ax1.plot(year_list, np.sqrt(var_h), label='h', linewidth=thk)
-#ax1.plot(year_list, np.sqrt(var_qm), label='qm', linewidth=thn)
-#ax1.plot(year_list, np.sqrt(var_qe), label='qe', linewidth=thn)
-#ax1.plot(year_list, np.sqrt(var_qh), label='qh', linewidth=thn)
-#ax1.plot(year_list, np.sqrt(var_me), label='me', linewidth=thn)
-#ax1.plot(year_list, np.sqrt(var_mh), label='mh', linewidth=thn)
-#ax1.plot(year_list, np.sqrt(var_eh), label='eh', linewidth=thn)
-#ax1.plot(year_list, np.sqrt(var_qmeh), label='qmeh', linewidth=thn)
-ax1.plot(year_list, np.sqrt(var_res), label='residual', linewidth=thn)
-plt.legend()
+if interactions >= 2:
+    ax1.plot(year_list, np.sqrt(var_qm), label='qm', linewidth=thn)
+    ax1.plot(year_list, np.sqrt(var_qe), label='qe', linewidth=thn)
+    ax1.plot(year_list, np.sqrt(var_qh), label='qh', linewidth=thn)
+    ax1.plot(year_list, np.sqrt(var_me), label='me', linewidth=thn)
+    ax1.plot(year_list, np.sqrt(var_mh), label='mh', linewidth=thn)
+    ax1.plot(year_list, np.sqrt(var_eh), label='eh', linewidth=thn)
+if interactions >= 3:
+    ax1.plot(year_list, np.sqrt(var_qme), label='qme', linewidth=thn, linestyle=ls3)
+    ax1.plot(year_list, np.sqrt(var_qmh), label='qmh', linewidth=thn, linestyle=ls3)
+    ax1.plot(year_list, np.sqrt(var_qeh), label='qeh', linewidth=thn, linestyle=ls3)
+    ax1.plot(year_list, np.sqrt(var_meh), label='meh', linewidth=thn, linestyle=ls3)
+if interactions >= 4:
+    ax1.plot(year_list, np.sqrt(var_qmeh), label='qmeh', linewidth=thn, linestyle=ls4)
+ax1.plot(year_list, np.sqrt(var_res), label='residual', linewidth=thk, color='gray')
+plt.legend(loc='center left')
 plt.xlabel('Year')
 plt.ylabel('sigma (m SLE)')
 
+# fractional variance
 ax2 = fig.add_subplot(nrow, ncol, 2)
 stackdata = np.stack([var_q, var_m, var_e, var_h,
                       #var_qm, var_qe, var_qh,
@@ -171,14 +221,22 @@ plt.xlabel('Year')
 plt.ylabel('percentage of variance')
 
 
+# overview of data
 fig = plt.figure(2, figsize=(8, 6), facecolor='w')
-nrow = 1
+nrow = 2
 ncol = 1
 
-ax = fig.add_subplot(111)
+ax = fig.add_subplot(nrow, ncol, 1)
 plt.bar(year_list, valid_runs_per_year, width=1.0)
 plt.xlabel('Year')
 plt.ylabel('Number of runs used')
 plt.ylim([0, 72])
+
+ax = fig.add_subplot(nrow, ncol, 2)
+plt.plot(year_list, r2)
+plt.xlabel('Year')
+plt.ylabel('OLS r^2')
+plt.ylim([0, 1])
+
 
 plt.show()
