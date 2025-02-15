@@ -63,6 +63,8 @@ var_mh = np.zeros((n_years,)) * np.nan
 var_eh = np.zeros((n_years,)) * np.nan
 var_qmeh = np.zeros((n_years,)) * np.nan
 var_res = np.zeros((n_years,)) * np.nan
+var_all = np.zeros((n_years,)) * np.nan
+
 for yr_idx, yr in enumerate(year_list):
     print(f'\n***** Year={yr} (ind={yr_idx}) *****\n')
     # get valid indices for this year
@@ -120,9 +122,10 @@ for yr_idx, yr in enumerate(year_list):
 #    var_qmeh[yr_idx] = anova_out.sum_sq[idx] / n_valid
 #    idx += 1
     var_res[yr_idx] = anova_out.sum_sq[idx] / n_valid
+    var_all[yr_idx] = np.std(slr_vals)**2
 
-#var_all = var_m + var_e + var_h + var_me + var_mh + var_eh + var_qmeh + var_res
-var_all = var_m + var_e + var_h + var_res
+#var_tot = var_m + var_e + var_h + var_me + var_mh + var_eh + var_qmeh + var_res
+var_tot = var_m + var_e + var_h + var_res
 
 # plot
 
@@ -133,7 +136,8 @@ ncol = 1
 ax1 = fig.add_subplot(nrow, ncol, 1)
 thk=2
 thn=0.5
-ax1.plot(year_list, np.sqrt(var_all), label='all', color='k', linewidth=thk)
+ax1.plot(year_list, np.sqrt(var_all), label='all', color='k', linewidth=thk, linestyle=':')
+ax1.plot(year_list, np.sqrt(var_tot), label='total', color='k', linewidth=thk)
 ax1.plot(year_list, np.sqrt(var_q), label='q', linewidth=thk)
 ax1.plot(year_list, np.sqrt(var_m), label='m', linewidth=thk)
 ax1.plot(year_list, np.sqrt(var_e), label='e', linewidth=thk)

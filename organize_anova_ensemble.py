@@ -44,7 +44,7 @@ for runset in sorted(glob.glob(os.path.join(runsets_base, 'q*m*'))):
             content = file.read()
         end_year = int(content.split('-')[0])
         std_name = f"q-{qval}_m-{mval}_e-{esm}_h-{hydrofrac}"
-        print(f'Processing {std_name}')
+        print(f'Processing {std_name}: end year={end_year}')
 
         run_dict = {'name': std_name,
                     'q': qval,
