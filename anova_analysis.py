@@ -221,22 +221,23 @@ plt.xlabel('Year')
 plt.ylabel('percentage of variance')
 
 
-# overview of data
-fig = plt.figure(2, figsize=(8, 6), facecolor='w')
-nrow = 2
-ncol = 1
+plot_overview = False
+if plot_overview:
+    # overview of data
+    fig = plt.figure(2, figsize=(8, 6), facecolor='w')
+    nrow = 2
+    ncol = 1
 
-ax = fig.add_subplot(nrow, ncol, 1)
-plt.bar(year_list, valid_runs_per_year, width=1.0)
-plt.xlabel('Year')
-plt.ylabel('Number of runs used')
-plt.ylim([0, 72])
+    ax = fig.add_subplot(nrow, ncol, 1)
+    plt.bar(year_list, valid_runs_per_year, width=1.0)
+    plt.xlabel('Year')
+    plt.ylabel('Number of runs used')
+    plt.ylim([0, 72])
 
-ax = fig.add_subplot(nrow, ncol, 2)
-plt.plot(year_list, r2)
-plt.xlabel('Year')
-plt.ylabel('OLS r^2')
-plt.ylim([0, 1])
-
+    ax = fig.add_subplot(nrow, ncol, 2)
+    plt.plot(year_list, r2)
+    plt.xlabel('Year')
+    plt.ylabel('OLS r^2')
+    plt.ylim([0, 1])
 
 plt.show()
