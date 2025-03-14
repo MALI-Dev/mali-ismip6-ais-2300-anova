@@ -4,6 +4,7 @@ import shutil
 
 from matplotlib import pyplot as plt
 from matplotlib.lines import Line2D
+from cycler import cycler
 import numpy as np
 import pandas as pd
 import xarray as xr
@@ -11,7 +12,7 @@ import xarray as xr
 import statsmodels.api as sm
 from statsmodels.formula.api import ols
 
-interactions = 3
+interactions = 2
 
 dataset_path = '/pscratch/sd/h/hoffman2/anova-results'
 rhoi = 910.0
@@ -169,28 +170,40 @@ if interactions >= 4:
 
 # plot
 
+# Extract the first 4 colors from Set1 and the first 6 from Set3
+set1_colors = list(plt.get_cmap('Set1').colors[:4])
+set3_colors = list(plt.get_cmap('Set3').colors[:6+1])
+set3_colors.pop(1)  # Remove the second color (index 1)  This yellow is hard to see
+
+# Combine the colors and add 'gray'
+custom_colors = set1_colors + set3_colors + ['gray']
+
+# Set the color cycle for plots
+plt.rcParams['axes.prop_cycle'] = cycler(color=custom_colors)
+
 fig = plt.figure(1, figsize=(10, 8), facecolor='w')
 nrow = 2
 ncol = 1
 
 ax1 = fig.add_subplot(nrow, ncol, 1)
-thk=2
-thn=0.5
+thk=3
+thn=1
+ls2='--'
 ls3='--'
 ls4=':'
-ax1.plot(year_list, np.sqrt(var_all), label='all', color='k', linewidth=thk, linestyle=':')
-ax1.plot(year_list, np.sqrt(var_tot), label='total', color='k', linewidth=thk)
+ax1.plot(year_list, np.sqrt(var_all), label='all', color='k', linewidth=thk, linestyle='-')
+ax1.plot(year_list, np.sqrt(var_tot), label='total', color='gray', linewidth=thk, linestyle=':')
 ax1.plot(year_list, np.sqrt(var_q), label='q', linewidth=thk)
 ax1.plot(year_list, np.sqrt(var_m), label='m', linewidth=thk)
 ax1.plot(year_list, np.sqrt(var_e), label='e', linewidth=thk)
 ax1.plot(year_list, np.sqrt(var_h), label='h', linewidth=thk)
 if interactions >= 2:
-    ax1.plot(year_list, np.sqrt(var_qm), label='qm', linewidth=thn)
-    ax1.plot(year_list, np.sqrt(var_qe), label='qe', linewidth=thn)
-    ax1.plot(year_list, np.sqrt(var_qh), label='qh', linewidth=thn)
-    ax1.plot(year_list, np.sqrt(var_me), label='me', linewidth=thn)
-    ax1.plot(year_list, np.sqrt(var_mh), label='mh', linewidth=thn)
-    ax1.plot(year_list, np.sqrt(var_eh), label='eh', linewidth=thn)
+    ax1.plot(year_list, np.sqrt(var_qm), label='qm', linewidth=thn, linestyle=ls2)
+    ax1.plot(year_list, np.sqrt(var_qe), label='qe', linewidth=thn, linestyle=ls2)
+    ax1.plot(year_list, np.sqrt(var_qh), label='qh', linewidth=thn, linestyle=ls2)
+    ax1.plot(year_list, np.sqrt(var_me), label='me', linewidth=thn, linestyle=ls2)
+    ax1.plot(year_list, np.sqrt(var_mh), label='mh', linewidth=thn, linestyle=ls2)
+    ax1.plot(year_list, np.sqrt(var_eh), label='eh', linewidth=thn, linestyle=ls2)
 if interactions >= 3:
     ax1.plot(year_list, np.sqrt(var_qme), label='qme', linewidth=thn, linestyle=ls3)
     ax1.plot(year_list, np.sqrt(var_qmh), label='qmh', linewidth=thn, linestyle=ls3)
@@ -198,13 +211,15 @@ if interactions >= 3:
     ax1.plot(year_list, np.sqrt(var_meh), label='meh', linewidth=thn, linestyle=ls3)
 if interactions >= 4:
     ax1.plot(year_list, np.sqrt(var_qmeh), label='qmeh', linewidth=thn, linestyle=ls4)
-ax1.plot(year_list, np.sqrt(var_res), label='residual', linewidth=thk, color='gray')
-plt.legend(loc='center left')
+ax1.plot(year_list, np.sqrt(var_res), label='3- & 4-way', linewidth=2, color='gray', ls='--')
+ax1.set_xlim([2000, 2300])
 plt.xlabel('Year')
-plt.ylabel('sigma (m SLE)')
+plt.ylabel(r'$\sigma$ (m SLE)')
+plt.annotate('a', (-0.08, 1.0), xycoords='axes fraction', fontsize='x-large', fontweight='bold')
+plt.legend(bbox_to_anchor = (1.2, 1.0), loc='upper right')
 
 # fractional variance
-ax2 = fig.add_subplot(nrow, ncol, 2)
+ax2 = fig.add_subplot(nrow, ncol, 2, sharex=ax1)
 stackdata = np.stack([var_q, var_m, var_e, var_h])
 labels=list(('q', 'm', 'e', 'h'))
 if interactions >= 2:
@@ -222,14 +237,19 @@ if interactions >= 4:
                            var_qmeh])
     labels.append('qmeh')
 stackdata = np.vstack([stackdata, var_res])
-labels.append('residual')
+labels.append('3- & 4-way')
 
 stackdata = stackdata / stackdata.sum(axis=0) * 100.0
 ax2.stackplot(year_list, stackdata, labels=labels)
-plt.legend()
+ax2.set_ylim([0, 100])
 plt.xlabel('Year')
-plt.ylabel('percentage of variance')
+plt.ylabel(r'Percentage of variance ($\sigma^2$)')
+plt.annotate('b', (-0.08, 1.0), xycoords='axes fraction', fontsize='x-large', fontweight='bold')
+plt.legend(bbox_to_anchor = (1.2, 1.0), loc='upper right')
 
+plt.tight_layout()
+plt.draw()
+plt.savefig('anova-variance.pdf')
 
 plot_overview = False
 if plot_overview:
