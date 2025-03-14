@@ -120,41 +120,41 @@ for yr_idx, yr in enumerate(year_list):
     anova_out = sm.stats.anova_lm(model, typ=2)
     print(anova_out)
     idx = 0
-    var_q[yr_idx] = anova_out.sum_sq[idx] / n_valid
+    var_q[yr_idx] = anova_out.sum_sq[idx] / (n_valid - 1)
     idx += 1
-    var_m[yr_idx] = anova_out.sum_sq[idx] / n_valid
+    var_m[yr_idx] = anova_out.sum_sq[idx] / (n_valid - 1)
     idx += 1
-    var_e[yr_idx] = anova_out.sum_sq[idx] / n_valid
+    var_e[yr_idx] = anova_out.sum_sq[idx] / (n_valid - 1)
     idx += 1
-    var_h[yr_idx] = anova_out.sum_sq[idx] / n_valid
+    var_h[yr_idx] = anova_out.sum_sq[idx] / (n_valid - 1)
     idx += 1
     if interactions >= 2:
-       var_qm[yr_idx] = anova_out.sum_sq[idx] / n_valid
+       var_qm[yr_idx] = anova_out.sum_sq[idx] / (n_valid - 1)
        idx += 1
-       var_qe[yr_idx] = anova_out.sum_sq[idx] / n_valid
+       var_qe[yr_idx] = anova_out.sum_sq[idx] / (n_valid - 1)
        idx += 1
-       var_qh[yr_idx] = anova_out.sum_sq[idx] / n_valid
+       var_qh[yr_idx] = anova_out.sum_sq[idx] / (n_valid - 1)
        idx += 1
-       var_me[yr_idx] = anova_out.sum_sq[idx] / n_valid
+       var_me[yr_idx] = anova_out.sum_sq[idx] / (n_valid - 1)
        idx += 1
-       var_mh[yr_idx] = anova_out.sum_sq[idx] / n_valid
+       var_mh[yr_idx] = anova_out.sum_sq[idx] / (n_valid - 1)
        idx += 1
-       var_eh[yr_idx] = anova_out.sum_sq[idx] / n_valid
+       var_eh[yr_idx] = anova_out.sum_sq[idx] / (n_valid - 1)
        idx += 1
     if interactions >= 3:
-       var_qme[yr_idx] = anova_out.sum_sq[idx] / n_valid
+       var_qme[yr_idx] = anova_out.sum_sq[idx] / (n_valid - 1)
        idx += 1
-       var_qmh[yr_idx] = anova_out.sum_sq[idx] / n_valid
+       var_qmh[yr_idx] = anova_out.sum_sq[idx] / (n_valid - 1)
        idx += 1
-       var_qeh[yr_idx] = anova_out.sum_sq[idx] / n_valid
+       var_qeh[yr_idx] = anova_out.sum_sq[idx] / (n_valid - 1)
        idx += 1
-       var_meh[yr_idx] = anova_out.sum_sq[idx] / n_valid
+       var_meh[yr_idx] = anova_out.sum_sq[idx] / (n_valid - 1)
        idx += 1
     if interactions >= 4:
-       var_qmeh[yr_idx] = anova_out.sum_sq[idx] / n_valid
+       var_qmeh[yr_idx] = anova_out.sum_sq[idx] / (n_valid - 1)
        idx += 1
 
-    var_res[yr_idx] = anova_out.sum_sq[idx] / n_valid
+    var_res[yr_idx] = anova_out.sum_sq[idx] / (n_valid-1)
     var_all[yr_idx] = np.std(slr_vals, ddof=1)**2  # TODO: not sure if ddof should be 0 or 1
 
 #var_tot = var_m + var_e + var_h + var_me + var_mh + var_eh + var_qmeh + var_res
