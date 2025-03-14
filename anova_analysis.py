@@ -34,7 +34,7 @@ valid_runs_per_year = np.zeros((n_years,))
 
 for i, file_path in enumerate(file_list):
     run_name = os.path.basename(file_path).split('.')[0]
-    print(run_name)
+    #print(run_name)
     q_list[i] = run_name.split('_')[0].split('-')[1]
     m_list[i] = run_name.split('_')[1].split('-')[1]
     e_list[i] = run_name.split('_')[2].split('-')[1]
@@ -89,7 +89,7 @@ for yr_idx, yr in enumerate(year_list):
                        'e': [e_list[i] for i in valid_run_ind],
                        'h': [h_list[i] for i in valid_run_ind],
                        'slr': slr_vals})
-    print(df)
+    #print(df)
     if interactions == 1:
         model = ols("""slr ~ q + m + C(e) + C(h)""", data=df).fit()
     elif interactions == 2:
@@ -114,11 +114,11 @@ for yr_idx, yr in enumerate(year_list):
                     m:C(e):C(h) +
                     q:m:C(e):C(h)""", data=df).fit()
 
-    print(model.summary())
+    #print(model.summary())
     r2[yr_idx] = model.rsquared
 
     anova_out = sm.stats.anova_lm(model, typ=2)
-    print(anova_out)
+    #print(anova_out)
     idx = 0
     var_q[yr_idx] = anova_out.sum_sq[idx] / (n_valid - 1)
     idx += 1
