@@ -14,7 +14,7 @@ from statsmodels.formula.api import ols
 
 interactions = 2
 
-dataset_path = '/pscratch/sd/h/hoffman2/anova-results'
+dataset_path = '/global/cfs/cdirs/fanssie/users/hoffman2/mali/ais2300-anova-results/region2'
 rhoi = 910.0
 rhosw = 1028.0
 
