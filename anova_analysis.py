@@ -205,17 +205,27 @@ plt.ylabel('sigma (m SLE)')
 
 # fractional variance
 ax2 = fig.add_subplot(nrow, ncol, 2)
-stackdata = np.stack([var_q, var_m, var_e, var_h,
-                      #var_qm, var_qe, var_qh,
-                      #var_me, var_mh, var_eh,
-                      #var_qmeh,
-                      var_res])
+stackdata = np.stack([var_q, var_m, var_e, var_h])
+labels=list(('q', 'm', 'e', 'h'))
+if interactions >= 2:
+    stackdata = np.vstack([stackdata,
+                           var_qm, var_qe, var_qh,
+                           var_me, var_mh, var_eh])
+    labels.extend(('qm', 'qe', 'qh',
+                   'me', 'mh', 'eh'))
+if interactions >= 3:
+    stackdata = np.vstack([stackdata,
+                           var_qme, var_qmh, var_qeh, var_meh])
+    labels.extend(('qme', 'qmh', 'qeh', 'meh'))
+if interactions >= 4:
+    stackdata = np.vstack([stackdata,
+                           var_qmeh])
+    labels.append('qmeh')
+stackdata = np.vstack([stackdata, var_res])
+labels.append('residual')
+
 stackdata = stackdata / stackdata.sum(axis=0) * 100.0
-ax2.stackplot(year_list, stackdata, labels=('q', 'm', 'e', 'h',
-                                            #'qm', 'qe', 'qh',
-                                            #'me', 'mh', 'eh',
-                                            #'qmeh',
-                                            'residual'))
+ax2.stackplot(year_list, stackdata, labels=labels)
 plt.legend()
 plt.xlabel('Year')
 plt.ylabel('percentage of variance')
