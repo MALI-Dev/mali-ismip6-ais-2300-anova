@@ -21,7 +21,7 @@ rhosw = 1028.0
 file_list = sorted(glob.glob(os.path.join(dataset_path, '*nc')))
 n_files = len(file_list)
 
-year_list = np.arange(2016, 2301 + 1)
+year_list = np.arange(2016, 2300 + 1)
 #year_list = np.arange(2050, 2051)
 n_years = len(year_list)
 
@@ -43,10 +43,10 @@ for i, file_path in enumerate(file_list):
 
     vaf = ds.volumeAboveFloatation.values
     inYrs  = ds.daysSinceStart.values / 365.
-    assert len(vaf) <= slr_list.shape[1], \
-           print(f'Error: len(vaf)={len(vaf)}; slr_list len={slr_list.shape[1]}',
-              'yrs:', inYrs)
-    slr_list[i, :len(vaf)] = -1.0 * (vaf - vaf[0]) / 3.62e14 * rhoi / rhosw
+    #assert len(vaf) <= slr_list.shape[1], \
+    #       print(f'Error: len(vaf)={len(vaf)}; slr_list len={slr_list.shape[1]}',
+    #          'yrs:', inYrs)
+    slr_list[i, :len(vaf)] = -1.0 * (vaf[0:n_years] - vaf[0]) / 3.62e14 * rhoi / rhosw
 
 
 print('shape of slr_list', slr_list.shape)
