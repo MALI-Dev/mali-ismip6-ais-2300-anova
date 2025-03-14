@@ -158,7 +158,7 @@ for yr_idx, yr in enumerate(year_list):
     var_all[yr_idx] = np.std(slr_vals, ddof=1)**2  # TODO: not sure if ddof should be 0 or 1
 
 #var_tot = var_m + var_e + var_h + var_me + var_mh + var_eh + var_qmeh + var_res
-var_tot = var_m + var_e + var_h + var_res
+var_tot = var_m + var_q + var_e + var_h + var_res
 if interactions >= 2:
     var_tot += var_qm + var_qe + var_qh + var_me + var_mh + var_eh
 if interactions >= 3:
