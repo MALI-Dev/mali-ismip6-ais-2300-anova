@@ -91,28 +91,28 @@ for yr_idx, yr in enumerate(year_list):
                        'slr': slr_vals})
     print(df)
     if interactions == 1:
-        model = ols("""slr ~ C(q) + C(m) + C(e) + C(h)""", data=df).fit()
+        model = ols("""slr ~ q + m + C(e) + C(h)""", data=df).fit()
     elif interactions == 2:
-        model = ols("""slr ~ C(q) + C(m) + C(e) + C(h) +
-                    C(q):C(m) + C(q):C(e) + C(q):C(h) +
-                    C(m):C(e) + C(m):C(h) +
+        model = ols("""slr ~ q + m + C(e) + C(h) +
+                    q:m + q:C(e) + q:C(h) +
+                    m:C(e) + m:C(h) +
                     C(e):C(h)""", data=df).fit()
     elif interactions == 3:
-        model = ols("""slr ~ C(q) + C(m) + C(e) + C(h) +
-                    C(q):C(m) + C(q):C(e) + C(q):C(h) +
-                    C(m):C(e) + C(m):C(h) +
+        model = ols("""slr ~ q + m + C(e) + C(h) +
+                    q:m + q:C(e) + q:C(h) +
+                    m:C(e) + m:C(h) +
                     C(e):C(h) +
-                    C(q):C(m):C(e) + C(q):C(m):C(h) + C(q):C(e):C(h) +
-                    C(m):C(e):C(h)""", data=df).fit()
+                    q:m:C(e) + q:m:C(h) + q:C(e):C(h) +
+                    m:C(e):C(h)""", data=df).fit()
     elif interactions == 4:
-        model = ols("""slr ~ C(q) + C(m) + C(e) + C(h) +
-                    C(q):C(m) + C(q):C(e) + C(q):C(h) +
-                    C(m):C(e) + C(m):C(h) +
+        model = ols("""slr ~ q + m + C(e) + C(h) +
+                    q:m + q:C(e) + q:C(h) +
+                    m:C(e) + m:C(h) +
                     C(e):C(h) +
-                    C(q):C(m):C(e) + C(q):C(m):C(h) + C(q):C(e):C(h) +
-                    C(m):C(e):C(h) +
-                    C(m):C(e):C(h) +
-                    C(q):C(m):C(e):C(h)""", data=df).fit()
+                    q:m:C(e) + q:m:C(h) + q:C(e):C(h) +
+                    m:C(e):C(h) +
+                    m:C(e):C(h) +
+                    q:m:C(e):C(h)""", data=df).fit()
 
     print(model.summary())
     r2[yr_idx] = model.rsquared
