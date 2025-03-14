@@ -10,12 +10,23 @@ import xarray as xr
 plot_time_series = True
 rhoi = 910.0
 
-dataset_destination = '/pscratch/sd/h/hoffman2/anova-results'
+#dataset_destination = '/pscratch/sd/h/hoffman2/anova-results'
+dataset_destination = '/global/cfs/cdirs/fanssie/users/hoffman2/mali/ais2300-anova-results'
 
 runsets_base = '/pscratch/sd/h/hoffman2/ismip6_ais_2300_4kmDI_anova_ensemble_gpu'
 
-ens_info = list()
+rgn = -1 # global stats
+#rgn = 14 # FRIS
+#rgn = 7 # Ross
+#rgn = 9 # TG/PIG
+rgn = 2 # Amery
 
+if rgn >= 0:
+    dataset_destination = os.path.join(dataset_destination, f'region{rgn}')
+    if not os.path.exists(dataset_destination):
+        os.mkdir(dataset_destination)
+
+ens_info = list()
 
 exp_list = {'expAE02_04': {'esm': 'ccsm4', 'hydro': 'off'},
             'expAE03_04': {'esm': 'hadgem2', 'hydro': 'off'},
@@ -57,19 +68,24 @@ for runset in sorted(glob.glob(os.path.join(runsets_base, 'q*m*'))):
         ens_info.append(run_dict)
 
         # copy globalStats to common location with naming convention
-        gs_path1 = os.path.join(runpath, 'output', 'globalStats.nc.cleaned')
-        gs_path2 = os.path.join(runpath, 'output', 'globalStats.nc')
-        have_gs = False
-        if os.path.isfile(gs_path1):
-            gs_path = gs_path1
-            have_gs = True
-        elif os.path.isfile(gs_path2):
-            gs_path = gs_path2
-            have_gs = True
+        if rgn < 0:
+            stat_path1 = os.path.join(runpath, 'output', 'globalStats.nc.cleaned')
+            stat_path2 = os.path.join(runpath, 'output', 'globalStats.nc')
         else:
-            print("  globalStats not found: SKIPPING")
-        if have_gs == True:
-            ds = xr.open_dataset(gs_path, decode_times=False, decode_cf=False)
+            stat_path1 = os.path.join(runpath, 'output', 'regionalStats.nc.cleaned')
+            stat_path2 = os.path.join(runpath, 'output', 'regionalStats.nc')
+
+        have_stat_file = False
+        if os.path.isfile(stat_path1):
+            stat_path = stat_path1
+            have_stat_file = True
+        elif os.path.isfile(stat_path2):
+            stat_path = stat_path2
+            have_stat_file = True
+        else:
+            print("  stats file not found: SKIPPING")
+        if have_stat_file == True:
+            ds = xr.open_dataset(stat_path, decode_times=False, decode_cf=False)
             years = ds.daysSinceStart.values / 365.0
             #inds = np.where(years == np.round(years))
             # find indices more carefully b/c of a case of two indices with the
@@ -81,7 +97,10 @@ for runset in sorted(glob.glob(os.path.join(runsets_base, 'q*m*'))):
                     inds.append(ind[0])
             days_even = ds.daysSinceStart[inds]
             ds_out = days_even.to_dataset(name = 'daysSinceStart')
-            ds_out['volumeAboveFloatation'] = ds.volumeAboveFloatation[inds]
+            if rgn < 0:
+                ds_out['volumeAboveFloatation'] = ds.volumeAboveFloatation[inds]
+            else:
+                ds_out['volumeAboveFloatation'] = ds.regionalVolumeAboveFloatation[inds, rgn]
             ds_out.to_netcdf(os.path.join(dataset_destination,
                                           f'{std_name}.nc'))
 
@@ -154,9 +173,9 @@ if plot_time_series:
 
     for i, run in enumerate(ens_info):
         run_name = run['name']
-        gs_path = os.path.join(dataset_destination, f'{run_name}.nc')
-        if os.path.isfile(gs_path):
-            ds = xr.open_dataset(gs_path, decode_times=False, decode_cf=False)
+        stat_path = os.path.join(dataset_destination, f'{run_name}.nc')
+        if os.path.isfile(stat_path):
+            ds = xr.open_dataset(stat_path, decode_times=False, decode_cf=False)
             yrs = ds.daysSinceStart.values / 365.0 + 2000.0
             vaf = ds.volumeAboveFloatation.values * 1.0e12 / rhoi
             ax_vaf.plot(yrs, vaf, '-', linewidth=lw)
