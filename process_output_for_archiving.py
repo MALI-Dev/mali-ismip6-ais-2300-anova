@@ -212,6 +212,38 @@ def time_avg_flux_vars(input_path):
                      'timeBndsMin': (['Time'], timeBndsMin),
                      'timeBndsMax': (['Time'], timeBndsMax),
                      }
+
+    out_data_attrs = {
+        'sfcMassBalApplied': {
+            'units': "kg m^{-2} s^{-1}",
+            'long_name': "annual average of the applied surface mass balance"
+        },
+        'floatingBasalMassBalApplied': {
+            'units': "kg m^{-2} s^{-1}",
+            'long_name': "annual average of the applied basal mass balance on floating regions",
+        },
+        'groundedBasalMassBalApplied': {
+            'units': "kg m^{-2} s^{-1}",
+            'long_name': "annual average of the applied basal mass balance on grounded regions"
+        },
+        'fluxAcrossGroundingLineOnCells': {
+            'units': "kg m^{-2} s^{-1}",
+            'long_name': ("annual average of flux across grounding line per unit area normal "
+                         "to a vertical plan aligned with the grounding line. "
+                         "This variable is calculated on cells and is for the "
+                         "purposes of reporting the ISMIP6 variable ligroundf. "
+                         "Positive means flux goes from grounded to floating ice.")
+        },
+        'calvingThickness': {
+            'units': "m s^{-1}",
+            'long_name': "annual average of thickness of ice that calves over a given year"
+        },
+        'faceMeltingThickness': {
+            'units': "m s^{-1}",
+            'long_name': ("annual average of equivalent plan-view averaged thickness"
+                         "of ice that melts over a given year from front ablation")
+        },
+    }
     print("PRINTING VARS")
     for varname, var in out_data_vars.items():
         print(varname, var[1].shape)
@@ -221,6 +253,11 @@ def time_avg_flux_vars(input_path):
                  }
     print('time length', (timeBndsMin+timeBndsMax).shape)
     ds_out = xr.Dataset(data_vars=out_data_vars, coords=out_coords)
+
+    # add the dataarray attributes
+    for var in out_data_attrs:
+        ds_out[var].attrs = out_data_attrs[var]
+
     ds_out = ds_out.astype('float32')
     ds_in.close()
     return ds_out
