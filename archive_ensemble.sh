@@ -1,36 +1,87 @@
 #!/bin/bash
 
-# Script to create a subset of model output for archiving purposes
+readonly RED="\033[0;31m"
+readonly NC="\033[0m"  # No Color
 
-# Location of ensemble model output
-RUNDIR=/pscratch/sd/h/hoffman2/ismip6_ais_2300_4kmDI_anova_ensemble_gpu/q03m05; NAME=q03-m95
+copy_input_files() {
+  # input arguments
+  local dir="$1"
 
-# Location where processed output should be placed
-DEST_ROOT=/pscratch/sd/h/hoffman2/AIS_ANOVA_ARCHIVE_PROCESSING_20250214
+  # Find matching files
+  local matches
+  matches=$(find "$dir" -type f \( -name "namelist.landice" -o -name "streams.landice" -o -name "albany_input.yaml" \))
 
+  if [[ -z "$matches" ]]; then
+    echo -e "${RED}Error: No matching input files found in '$dir'.${NC}"
+    exit 1
+  fi
 
-DEST=$DEST_ROOT/$NAME
+  echo "$matches" | while read -r file; do
+    echo $file
+  done
+}
 
-MESHVARS=latCell,lonCell,xCell,yCell,zCell,indexToCellID,latEdge,lonEdge,xEdge,yEdge,zEdge,indexToEdgeID,latVertex,lonVertex,xVertex,yVertex,zVertex,indexToVertexID,cellsOnEdge,nEdgesOnCell,nEdgesOnEdge,edgesOnCell,edgesOnEdge,weightsOnEdge,dvEdge,dcEdge,angleEdge,areaCell,areaTriangle,cellsOnCell,verticesOnCell,verticesOnEdge,edgesOnVertex,cellsOnVertex,kiteAreasOnVertex,meshDensity,layerThicknessFractions
+copy_output_files() {
+  # input arguments
+  local dir="$1"
 
-mkdir -p $DEST
-#cp $RUNDIR/*ensemble.cfg $DEST
+  # Find matching files
+  local matches
+  matches=$(find "$dir/output" -type f -name "*Stats.nc")
 
-# loop over runs
-for dirpath in $RUNDIR/landice/ismip6_run/ismip6_ais_proj2300/exp*/ ; do
-   RUN=`basename $dirpath`
-   echo Processing $RUN
-   mkdir $DEST/$RUN
-   cp $dirpath/output/*Stats.nc $DEST/$RUN
-   #ncrcat -d Time,,,10  $dirpath/output/output_*.nc $DEST/$RUN/output.nc
-   #ncrcat -x -v $MESHVARS -d Time,,,10  $dirpath/output/output_*.nc $DEST/$RUN/output.nc
-   # for branch runs, start 4 time levels in at year 2020 and then get every 10 years
-   #ncrcat -x -v $MESHVARS,damage -d Time,4,,10  $dirpath/output/output_*.nc $DEST/$RUN/output.nc
-   ncrcat  -v xtime,simulationStartTime,daysSinceStart,thickness,lowerSurface,xvelmean,yvelmean,cellMask -d Time,,,1  $dirpath/output/output_state*.nc $DEST/$RUN/output.nc
-done
+  if [[ -z "$matches" ]]; then
+    echo -e "${RED}Error: No matching input files found in '$dir'.${NC}"
+    exit 1
+  fi
 
-# create mesh var file using final output file
-for fname in $dirpath/output/output_*.nc; do 
-   ncks -v $MESHVARS $fname $DEST/mesh_vars.nc
-   break
-done
+  echo "$matches" | while read -r file; do
+    echo $file
+  done
+}
+
+copy_restart_files() {
+  # input arguments
+  local dir="$1"
+
+  # Find matching files
+  local matches
+  matches=$(find "$dir" -type f -name "rst.*.nc" | sort -t '.' -k2)
+
+  if [[ -z "$matches" ]]; then
+    echo -e "${RED}Error: No matching restart files found in '$dir'.${NC}"
+    exit 1
+  fi
+
+  # Filter files where the year is divisible by 15
+  echo "$matches" | while read -r file; do
+    year=$(echo "${file##*/}" | grep -oE '[0-9]{4}')
+    if (( (year - 2015) % 15 == 0 )); then
+      echo "$file"
+    fi
+  done
+}
+
+main() {
+    # input arguments
+    local input_dir="$1"
+    local output_dir="$2"
+
+    # Check if a directory was provided
+    if [[ -z "$input_dir" ]]; then
+      echo -e "${RED}Error: No directory provided.${NC}"
+      echo "Usage: find_div15_rst_files /path/to/directory"
+      exit 1
+    fi
+
+    # Check if the directory exists
+    if [[ ! -d "$input_dir" ]]; then
+      echo -e "${RED}Error: Directory '$input_dir' does not exist.${NC}"
+      exit 1
+    fi
+
+    copy_input_files "dumb"
+    copy_output_files $input_dir
+    copy_restart_files $input_dir
+}
+
+main "$@"
