@@ -39,7 +39,7 @@ def clean_xtime(ds):
     print("Cleaning xtime")
     # xtime needs some massaging for xarray not to mangle it
     xtime = ds['xtime']
-    nTime = ds.dims['Time']
+    nTime = ds.sizes['Time']
     strLen = 64
     xtime2_array = np.empty(shape=(nTime), dtype = np.dtype(('S', strLen)))
     for t in range(nTime):
@@ -89,8 +89,8 @@ def time_avg_flux_vars(input_path):
     if 'units' in ds_in.daysSinceStart.attrs:  # make have been removed in a previous step, so check if it exists
         del ds_in.daysSinceStart.attrs['units'] # need this line to prevent xarray from reading daysSinceStart as a timedelta type.
 
-    time = ds_in.dims['Time']
-    nCells = ds_in.dims['nCells']
+    time = ds_in.sizes['Time']
+    nCells = ds_in.sizes['nCells']
     xtimeIn = ds_in['xtime'][:].values
     #print(xtimeIn)
     xtime = []
@@ -184,7 +184,7 @@ def time_avg_flux_vars(input_path):
 
                 sumIceMask = sumIceMask + iceMask[i,:]
 
-                print(f"         year={years[j]}, decYears={decYears[i]}, daysSinceStart={daysSinceStart[j]}, xtime={xtime[i]}")
+                print(f"         year={years[j]}, decYears={decYears[i]:4.3f}, daysSinceStart={daysSinceStart[j]:.3f}, xtime={xtime[i]}")
 
 
         avgSmb[j,:] = sumYearSmb / sumYearTime
@@ -237,8 +237,8 @@ def clean_flux_fields_before_time_averaging(file_input, file_mesh,
     data = xr.open_dataset(file_input, decode_cf=False) # need decode_cf=False to prevent xarray from reading daysSinceStart as a timedelta type.
     if 'units' in data.daysSinceStart.attrs:
         del data.daysSinceStart.attrs['units'] # need this line to prevent xarray from reading daysSinceStart as a timedelta type.
-    time = data.dims['Time']
-    nCells = data.dims['nCells']
+    time = data.sizes['Time']
+    nCells = data.sizes['nCells']
     nEdgesOnCell = data['nEdgesOnCell'][:].values
     edgesOnCell = data['edgesOnCell'][:].values
     cellsOnCell = data['cellsOnCell'][:].values
