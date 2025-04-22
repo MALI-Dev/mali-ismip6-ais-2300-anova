@@ -30,6 +30,8 @@ def main():
 
     print("processing flux files")
     ds_flux = time_avg_flux_vars(args.input_path)
+    # copy global attributes
+    ds_flux.attrs = ds_state.attrs
     ds_flux.to_netcdf(os.path.join(args.output_path, 'flux.nc'), mode='w')
 
     #ds_out = xr.merge([ds_state, ds_flux])
