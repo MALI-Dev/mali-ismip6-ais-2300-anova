@@ -1,87 +1,14 @@
 #!/bin/bash
+#SBATCH --qos=debug
+#SBATCH --nodes=1
+#SBATCH --constraint=cpu
+#SBATCH --time=00:30:00
 
-readonly RED="\033[0;31m"
-readonly NC="\033[0m"  # No Color
+source $HOME/polaris/load_dev_polaris_0.6.0-alpha.1_pm-cpu_gnu_mpich.sh
 
-copy_input_files() {
-  # input arguments
-  local dir="$1"
+export ENSEMBLE_DIR="/pscratch/sd/h/hoffman2/ismip6_ais_2300_4kmDI_anova_ensemble_gpu/"
+export ARCHIVE_DIR="/pscratch/sd/a/anolan/ismip6_ais_anova_ensemble_archive"
 
-  # Find matching files
-  local matches
-  matches=$(find "$dir" -type f \( -name "namelist.landice" -o -name "streams.landice" -o -name "albany_input.yaml" \))
+srun parallel --jobs 4 ./archive_experiment.sh ::: 03 05 ::: 05 50 ::: "hist"
 
-  if [[ -z "$matches" ]]; then
-    echo -e "${RED}Error: No matching input files found in '$dir'.${NC}"
-    exit 1
-  fi
-
-  echo "$matches" | while read -r file; do
-    echo $file
-  done
-}
-
-copy_output_files() {
-  # input arguments
-  local dir="$1"
-
-  # Find matching files
-  local matches
-  matches=$(find "$dir/output" -type f -name "*Stats.nc")
-
-  if [[ -z "$matches" ]]; then
-    echo -e "${RED}Error: No matching input files found in '$dir'.${NC}"
-    exit 1
-  fi
-
-  echo "$matches" | while read -r file; do
-    echo $file
-  done
-}
-
-copy_restart_files() {
-  # input arguments
-  local dir="$1"
-
-  # Find matching files
-  local matches
-  matches=$(find "$dir" -type f -name "rst.*.nc" | sort -t '.' -k2)
-
-  if [[ -z "$matches" ]]; then
-    echo -e "${RED}Error: No matching restart files found in '$dir'.${NC}"
-    exit 1
-  fi
-
-  # Filter files where the year is divisible by 15
-  echo "$matches" | while read -r file; do
-    year=$(echo "${file##*/}" | grep -oE '[0-9]{4}')
-    if (( (year - 2015) % 15 == 0 )); then
-      echo "$file"
-    fi
-  done
-}
-
-main() {
-    # input arguments
-    local input_dir="$1"
-    local output_dir="$2"
-
-    # Check if a directory was provided
-    if [[ -z "$input_dir" ]]; then
-      echo -e "${RED}Error: No directory provided.${NC}"
-      echo "Usage: find_div15_rst_files /path/to/directory"
-      exit 1
-    fi
-
-    # Check if the directory exists
-    if [[ ! -d "$input_dir" ]]; then
-      echo -e "${RED}Error: Directory '$input_dir' does not exist.${NC}"
-      exit 1
-    fi
-
-    copy_input_files "dumb"
-    copy_output_files $input_dir
-    copy_restart_files $input_dir
-}
-
-main "$@"
+#srun parallel --jobs 4 ./archive_experiment.sh ::: 03 05 10 ::: 05 50 95 ::: "hist" 02 03 04 05 11 12 13 14
