@@ -6,6 +6,7 @@ import argparse
 from netCDF4 import Dataset
 import xarray as xr
 import numpy as np
+from cftime import datetime
 from datetime import date
 from subprocess import check_call
 import os, sys
@@ -34,6 +35,25 @@ def main():
     #ds_out = xr.merge([ds_state, ds_flux])
     #ds_out.to_netcdf(os.path.join(args.output_path, 'combined.nc'), mode='w')
 
+def _xtime2cftime(xtime_str, format="%Y-%m-%d_%H:%M:%S", calendar="noleap"):
+    """Convert a single xtime value to a cftime datetime object
+    """
+
+    stripped_str = xtime_str.tobytes().decode("utf-8").strip().strip('\x00')
+
+    return datetime.strptime(stripped_str, format, calendar=calendar)
+
+def parse_xtime(da, calendar="noleap"):
+    """Parse dataarray to cftime datetimes and create new coordinate
+       from parsed values, named `Time`
+    """
+
+    times = [_xtime2cftime(s, calendar=calendar) for s in da.values]
+
+    if ("Time" in da.dims) and (da.dtype == np.dtype("S1")):
+        time_da = xr.DataArray(times, [('Time', times)])
+
+    return time_da
 
 def clean_xtime(ds):
     print("Cleaning xtime")
@@ -56,23 +76,31 @@ def process_state_files(input_path):
     ds_in = xr.open_mfdataset(os.path.join(input_path, 'output_state*.nc'),
                               combine='nested', concat_dim='Time',
                               decode_times=False, decode_cf=False)
-    ds_in = clean_xtime(ds_in)
+
     vars = [
         'thickness',
         'lowerSurface',
         'xvelmean',
         'yvelmean',
         'basalTemperature',
-        'daysSinceStart',
-        'xtime',
         ]
 
-    ds_state = ds_in[vars]
+    # parse simulation start times and make sure all are equal
+    start_times = parse_xtime(ds_in.simulationStartTime)
+    if ~np.all(start_times == start_times[0]):
+        raise ValueError("Inconsitent simulation start time")
 
-    xtime = ds_state.xtime
-    ds_state = ds_state.drop_vars('xtime')
+    ref_year = int(start_times.dt.year[0])
+
+    # copy the output variables from the input dataset
+    ds_state = ds_in[vars]
+    # set daysSinceStart as Time coordinate, make sure not to copy attrs
+    ds_state = ds_state.assign_coords({"Time": ds_in.daysSinceStart.values})
+    # add attributes needed to make Time dimension CF compliant
+    ds_state.Time.attrs["units"] = f"days since {ref_year}-01-01"
+    ds_state.Time.attrs["calendar"] = ds_in.config_calendar_type
+    # downcast to single precision to save space on disk
     ds_state = ds_state.astype('float32')
-    ds_state['xtime'] = xtime
 
     return ds_state
 
@@ -116,17 +144,27 @@ def time_avg_flux_vars(input_path):
     simulationStartTime = ds_in.simulationStartTime.values[0,:].tobytes().decode().strip().strip('\x00')
     print(simulationStartTime)
 
-    #fin = Dataset(input_file, 'r')
-    #simulationStartTime = fin.variables['simulationStartTime'][:].tostring().decode('utf-8').strip().strip('\x00')
-    #fin.close()
-    simulationStartDate = simulationStartTime.split("_")[0]
-    if simulationStartDate[5:10] != '01-01':
-        sys.exit("Error: simulationStartTime for flux file is not on Jan. 1.")
-    refYear = int(simulationStartDate[0:4])
-    startYr = refYear + np.floor(daysSinceStart[0] / 365.0) # using floor here because we might not have output at jan 1, but we'll definitely have at least one time level per year
+    # parse simulation start times and make sure all are equal
+    start_times = parse_xtime(ds_in.simulationStartTime)
+    if ~np.all(start_times == start_times[0]):
+        raise ValueError("Inconsitent simulation start time")
+
+    refYear = int(start_times.dt.year[0])
+    refMonth = int(start_times.dt.month[0])
+    refDay = int(start_times.dt.day[0])
+
+    if (refMonth != 1) or (refDay != 1):
+        raise ValueError("Error: simulationStartTime for flux file is not on Jan. 1.")
+
+    # using floor here because we might not have output at jan 1, but we'll definitely have at least one time level per year
+    startYr = refYear + np.floor(daysSinceStart[0] / 365.0)
     finalYr = refYear + daysSinceStart[-1] / 365.0
+
     if (daysSinceStart[-1] / 365.0 != daysSinceStart[-1] // 365):
         sys.exit(f"Error: final time of flux output file is not on Jan. 1.: daysSinceStart={daysSinceStart[-1]}, xtime={xtime[-1]}" )
+
+    simulationStartTime = start_times[0].dt.strftime("%Y-%m-%d_%H:%M:%S").values
+    simulationStartDate = start_times[0].dt.strftime("%Y-%m-%d").values
     print(f"simulationStartTime={simulationStartTime}; simulationStartDate={simulationStartDate}; refYear={refYear}")
     print(f"start year={startYr}; final year={finalYr}")
 
@@ -371,7 +409,7 @@ def clean_flux_fields_before_time_averaging(file_input, file_mesh,
 
             prev_t = max(t-1, 0)  # ensure that index_cf never uses thickness from last (-1) time step
             index_cf = np.where((faceMeltingThickness[t, :] > 0.0) * (bed[:] < 0.0) *
-                                (faceMeltingThickness[t, :] != thickness[prev_t, :]) * 
+                                (faceMeltingThickness[t, :] != thickness[prev_t, :]) *
                                 (thickness[prev_t, :] > 0.))[0]
             for i in index_cf:
                 # faceMeltSpeed is calculated for ice below water line, but needs to be aplied
