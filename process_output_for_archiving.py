@@ -25,14 +25,14 @@ def main():
 
     print("processing state files")
     ds_state = process_state_files(args.input_path)
-    #ds_state.to_netcdf(os.path.join(args.output_path, 'state.nc'), mode='w')
+    ds_state.to_netcdf(os.path.join(args.output_path, 'state.nc'), mode='w')
 
     print("processing flux files")
     ds_flux = time_avg_flux_vars(args.input_path)
-    #ds_flux.to_netcdf(os.path.join(args.output_path, 'flux.nc'), mode='w')
+    ds_flux.to_netcdf(os.path.join(args.output_path, 'flux.nc'), mode='w')
 
-    ds_out = xr.merge([ds_state, ds_flux])
-    ds_out.to_netcdf(os.path.join(args.output_path, 'combined.nc'), mode='w')
+    #ds_out = xr.merge([ds_state, ds_flux])
+    #ds_out.to_netcdf(os.path.join(args.output_path, 'combined.nc'), mode='w')
 
 
 def clean_xtime(ds):
@@ -137,8 +137,7 @@ def time_avg_flux_vars(input_path):
     ##years = np.trim_zeros(years)
     years = np.arange(startYr, finalYr) # we don't want the final year in the time array as a year to process - it's actually the end point of the previous year
 
-    timeBndsMin = np.ones((len(years),)) * 1.0e36
-    timeBndsMax = np.ones((len(years),)) * -1.0e36
+    timeBnds = np.ones((len(years), 2), dtype=int)
 
     avgSmb = np.zeros((len(years), nCells)) * np.nan
     avgCF = np.zeros((len(years), nCells)) * np.nan
@@ -153,9 +152,9 @@ def time_avg_flux_vars(input_path):
     #for j in range(5):
     for j in range(len(years)):
         # we want time bounds to span the full year
-        timeBndsMin[j] = (years[j] - refYear) * 365.0
-        timeBndsMax[j] = (years[j]+1.0 - refYear) * 365.0
-        print(f"     year index: {j}, year={years[j]}; timeBindsMin={timeBndsMin[j]}, timeBndsMax={timeBndsMax[j]}")
+        timeBnds[j, 0] = (years[j] - refYear) * 365.0
+        timeBnds[j, 1] = (years[j]+1.0 - refYear) * 365.0
+        print(f"     year index: {j}, year={years[j]}; timeBindsMin={timeBnds[j, 0]}, timeBndsMax={timeBnds[j, 1]}")
         sumYearSmb = 0
         sumYearBmb = 0
         sumYearDHdt = 0
@@ -199,21 +198,21 @@ def time_avg_flux_vars(input_path):
 
     print("    write time averaged values")
 
-    print(f"avg shape={avgSmb.shape}, time shape={timeBndsMin.shape}")
-    out_data_vars = {
-                     'sfcMassBalApplied': (['Time', 'nCells'], avgSmb),
-                     'floatingBasalMassBalApplied':       (['Time', 'nCells'], avgBmbfl),
-                     'groundedBasalMassBalApplied':       (['Time', 'nCells'], avgBmbgr),
-                     #'dHdt':              (['Time', 'nCells'], avgDHdt),
+    print(f"avg shape={avgSmb.shape}, time shape={timeBnds[:, 0].shape}")
+    out_data_vars = {'sfcMassBalApplied': (['Time', 'nCells'], avgSmb),
+                     'floatingBasalMassBalApplied': (['Time', 'nCells'], avgBmbfl),
+                     'groundedBasalMassBalApplied': (['Time', 'nCells'], avgBmbgr),
                      'fluxAcrossGroundingLineOnCells': (['Time', 'nCells'], avgGF),
                      'calvingThickness': (['Time', 'nCells'], avgCF),
                      'faceMeltingThickness': (['Time', 'nCells'], avgFM),
-                     #'iceMask':        (['Time', 'nCells'], maxIceMask),
-                     'timeBndsMin': (['Time'], timeBndsMin),
-                     'timeBndsMax': (['Time'], timeBndsMax),
+                     'Time_bnds': (['Time', 'bnds'], timeBnds),
                      }
 
     out_data_attrs = {
+        'Time': {
+            'units': f'days since {refYear}-01-01',
+            'calendar': 'noleap',
+        },
         'sfcMassBalApplied': {
             'units': "kg m^{-2} s^{-1}",
             'long_name': "annual average of the applied surface mass balance"
@@ -244,14 +243,18 @@ def time_avg_flux_vars(input_path):
                          "of ice that melts over a given year from front ablation")
         },
     }
+
     print("PRINTING VARS")
     for varname, var in out_data_vars.items():
         print(varname, var[1].shape)
+
     print(ds_in['simulationStartTime'])
-    out_coords = {
-                  'Time':   (['Time'], (timeBndsMin+timeBndsMax)/2.0)
+
+    out_coords = {'Time': (['Time'], (np.mean(timeBnds, axis=1).astype(int))),
+                  'bnds': ([0, 1])
                  }
-    print('time length', (timeBndsMin+timeBndsMax).shape)
+
+    print('time length', timeBnds.shape[0])
     ds_out = xr.Dataset(data_vars=out_data_vars, coords=out_coords)
 
     # add the dataarray attributes
