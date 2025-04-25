@@ -1,10 +1,13 @@
 #!/bin/bash
-#SBATCH --qos=debug
-#SBATCH --nodes=1
+#SBATCH --qos=regular
+#SBATCH --nodes=5
+#SBATCH --ntasks-per-node=16
+#SBATCH --cpus-per-task=8
+#SBATCH --account=m4288
 #SBATCH --constraint=cpu
-#SBATCH --time=00:30:00
+#SBATCH --time=00:45:00
 
-source $HOME/polaris/load_dev_polaris_0.6.0-alpha.1_pm-cpu_gnu_mpich.sh
+source /global/common/software/e3sm/anaconda_envs/load_latest_e3sm_unified_pm-cpu.sh
 
 export ENSEMBLE_DIR="/pscratch/sd/h/hoffman2/ismip6_ais_2300_4kmDI_anova_ensemble_gpu/"
 export ARCHIVE_DIR="/pscratch/sd/a/anolan/ismip6_ais_anova_ensemble_archive"
@@ -13,8 +16,10 @@ main(){
 
     # copy the forcing and meshes to top level dir
     archive_meshes_and_forcing
+
     # archive the experiment dirs in parallel
-    srun parallel --jobs 4 ./archive_experiment.sh ::: 03 05 10 ::: 05 50 95 ::: "hist" 02 03 04 05 11 12 13 14
+    # ref: https://www.docs.arc.vt.edu/usage/parallel.html
+    parallel -j $SLURM_NTASKS srun --nodes=1 --ntasks=1 --cpus-per-task=8 ./archive_experiment.sh ::: 03 05 10 ::: 05 50 95 ::: "hist" 02 03 04 05 11 12 13 14
 }
 
 unique_files(){
