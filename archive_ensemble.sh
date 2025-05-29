@@ -5,7 +5,7 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --account=m4288
 #SBATCH --constraint=cpu
-#SBATCH --time=00:45:00
+#SBATCH --time=01:15:00
 
 source /global/common/software/e3sm/anaconda_envs/load_latest_e3sm_unified_pm-cpu.sh
 
@@ -17,9 +17,13 @@ main(){
     # copy the forcing and meshes to top level dir
     archive_meshes_and_forcing
 
+    # extract subset of mesh varibales from initial condition file
+    extract_mesh_vars
+
     # archive the experiment dirs in parallel
     # ref: https://www.docs.arc.vt.edu/usage/parallel.html
-    parallel -j $SLURM_NTASKS srun --nodes=1 --ntasks=1 --cpus-per-task=8 ./archive_experiment.sh ::: 03 05 10 ::: 05 50 95 ::: "hist" 02 03 04 05 11 12 13 14
+    parallel -j $SLURM_NTASKS srun --nodes=1 --ntasks=1 --cpus-per-task=8 \
+        ./archive_experiment.sh ::: 03 05 10 ::: 05 50 95 ::: "hist" 02 03 04 05 11 12 13 14
 }
 
 unique_files(){
@@ -40,6 +44,25 @@ find_validate_copy(){
 
     # copy over to archive dir
     printf "%s\n" "${matches[@]}" | xargs -I {} cp {} $3
+}
+
+extract_mesh_vars(){
+
+    mesh_vars=(
+        latCell lonCell xCell yCell zCell indexToCellID
+        latEdge lonEdge xEdge yEdge zEdge indexToEdgeID
+        latVertex lonVertex xVertex yVertex zVertex indexToVertexID
+        cellsOnEdge nEdgesOnCell nEdgesOnEdge edgesOnCell edgesOnEdge
+        weightsOnEdge dvEdge dcEdge angleEdge areaCell areaTriangle
+        cellsOnCell verticesOnCell verticesOnEdge
+        edgesOnVertex cellsOnVertex kiteAreasOnVertex
+    )
+
+    mesh_vars_string="${mesh_vars[@]}"
+
+    ncks -O -C -v "${mesh_vars_string//${IFS:0:1}/,}" \
+         -o "${ARCHIVE_DIR}/mesh/mesh_vars.nc" \
+         "${ARCHIVE_DIR}/mesh/AIS_4to20km_r01_20220907_m3_05perc_seafloor_mu.nc"
 }
 
 archive_meshes_and_forcing(){
