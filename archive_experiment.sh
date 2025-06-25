@@ -10,7 +10,7 @@ copy_input_files() {
 
   # Find matching files
   local matches
-  matches=$(find "$in_dir" -type f \( -name "namelist.landice" -o -name "streams.landice" -o -name "albany_input.yaml" \))
+  matches=$(find -L "$in_dir" -type f \( -name "namelist.landice" -o -name "streams.landice" -o -name "albany_input.yaml" \))
 
   if [[ -z "$matches" ]]; then
     echo -e "${RED}Error: No matching input files found in '$in_dir'.${NC}"
@@ -29,7 +29,7 @@ copy_output_files() {
 
   # Find matching files
   local matches
-  matches=$(find "$in_dir/output" -type f -name "*Stats.nc")
+  matches=$(find -L "$in_dir/output" -type f -name "*Stats.nc")
 
   if [[ -z "$matches" ]]; then
     echo -e "${RED}Error: No matching input files found in '$in_dir'.${NC}"
