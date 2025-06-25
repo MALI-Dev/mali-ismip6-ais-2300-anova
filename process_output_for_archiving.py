@@ -6,6 +6,7 @@ import argparse
 from netCDF4 import Dataset
 import xarray as xr
 import numpy as np
+from cftime import datetime
 from datetime import date
 from subprocess import check_call
 import os, sys
@@ -25,21 +26,42 @@ def main():
 
     print("processing state files")
     ds_state = process_state_files(args.input_path)
-    #ds_state.to_netcdf(os.path.join(args.output_path, 'state.nc'), mode='w')
+    ds_state.to_netcdf(os.path.join(args.output_path, 'state.nc'), mode='w')
 
     print("processing flux files")
     ds_flux = time_avg_flux_vars(args.input_path)
-    #ds_flux.to_netcdf(os.path.join(args.output_path, 'flux.nc'), mode='w')
+    # copy global attributes
+    ds_flux.attrs = ds_state.attrs
+    ds_flux.to_netcdf(os.path.join(args.output_path, 'flux.nc'), mode='w')
 
-    ds_out = xr.merge([ds_state, ds_flux])
-    ds_out.to_netcdf(os.path.join(args.output_path, 'combined.nc'), mode='w')
+    #ds_out = xr.merge([ds_state, ds_flux])
+    #ds_out.to_netcdf(os.path.join(args.output_path, 'combined.nc'), mode='w')
 
+def _xtime2cftime(xtime_str, format="%Y-%m-%d_%H:%M:%S", calendar="noleap"):
+    """Convert a single xtime value to a cftime datetime object
+    """
+
+    stripped_str = xtime_str.tobytes().decode("utf-8").strip().strip('\x00')
+
+    return datetime.strptime(stripped_str, format, calendar=calendar)
+
+def parse_xtime(da, calendar="noleap"):
+    """Parse dataarray to cftime datetimes and create new coordinate
+       from parsed values, named `Time`
+    """
+
+    times = [_xtime2cftime(s, calendar=calendar) for s in da.values]
+
+    if ("Time" in da.dims) and (da.dtype == np.dtype("S1")):
+        time_da = xr.DataArray(times, [('Time', times)])
+
+    return time_da
 
 def clean_xtime(ds):
     print("Cleaning xtime")
     # xtime needs some massaging for xarray not to mangle it
     xtime = ds['xtime']
-    nTime = ds.dims['Time']
+    nTime = ds.sizes['Time']
     strLen = 64
     xtime2_array = np.empty(shape=(nTime), dtype = np.dtype(('S', strLen)))
     for t in range(nTime):
@@ -56,23 +78,31 @@ def process_state_files(input_path):
     ds_in = xr.open_mfdataset(os.path.join(input_path, 'output_state*.nc'),
                               combine='nested', concat_dim='Time',
                               decode_times=False, decode_cf=False)
-    ds_in = clean_xtime(ds_in)
+
     vars = [
         'thickness',
         'lowerSurface',
         'xvelmean',
         'yvelmean',
         'basalTemperature',
-        'daysSinceStart',
-        'xtime',
         ]
 
-    ds_state = ds_in[vars]
+    # parse simulation start times and make sure all are equal
+    start_times = parse_xtime(ds_in.simulationStartTime)
+    if ~np.all(start_times == start_times[0]):
+        raise ValueError("Inconsitent simulation start time")
 
-    xtime = ds_state.xtime
-    ds_state = ds_state.drop_vars('xtime')
+    ref_year = int(start_times.dt.year[0])
+
+    # copy the output variables from the input dataset
+    ds_state = ds_in[vars]
+    # set daysSinceStart as Time coordinate, make sure not to copy attrs
+    ds_state = ds_state.assign_coords({"Time": ds_in.daysSinceStart.values})
+    # add attributes needed to make Time dimension CF compliant
+    ds_state.Time.attrs["units"] = f"days since {ref_year}-01-01"
+    ds_state.Time.attrs["calendar"] = ds_in.config_calendar_type
+    # downcast to single precision to save space on disk
     ds_state = ds_state.astype('float32')
-    ds_state['xtime'] = xtime
 
     return ds_state
 
@@ -89,8 +119,8 @@ def time_avg_flux_vars(input_path):
     if 'units' in ds_in.daysSinceStart.attrs:  # make have been removed in a previous step, so check if it exists
         del ds_in.daysSinceStart.attrs['units'] # need this line to prevent xarray from reading daysSinceStart as a timedelta type.
 
-    time = ds_in.dims['Time']
-    nCells = ds_in.dims['nCells']
+    time = ds_in.sizes['Time']
+    nCells = ds_in.sizes['nCells']
     xtimeIn = ds_in['xtime'][:].values
     #print(xtimeIn)
     xtime = []
@@ -116,17 +146,27 @@ def time_avg_flux_vars(input_path):
     simulationStartTime = ds_in.simulationStartTime.values[0,:].tobytes().decode().strip().strip('\x00')
     print(simulationStartTime)
 
-    #fin = Dataset(input_file, 'r')
-    #simulationStartTime = fin.variables['simulationStartTime'][:].tostring().decode('utf-8').strip().strip('\x00')
-    #fin.close()
-    simulationStartDate = simulationStartTime.split("_")[0]
-    if simulationStartDate[5:10] != '01-01':
-        sys.exit("Error: simulationStartTime for flux file is not on Jan. 1.")
-    refYear = int(simulationStartDate[0:4])
-    startYr = refYear + np.floor(daysSinceStart[0] / 365.0) # using floor here because we might not have output at jan 1, but we'll definitely have at least one time level per year
+    # parse simulation start times and make sure all are equal
+    start_times = parse_xtime(ds_in.simulationStartTime)
+    if ~np.all(start_times == start_times[0]):
+        raise ValueError("Inconsitent simulation start time")
+
+    refYear = int(start_times.dt.year[0])
+    refMonth = int(start_times.dt.month[0])
+    refDay = int(start_times.dt.day[0])
+
+    if (refMonth != 1) or (refDay != 1):
+        raise ValueError("Error: simulationStartTime for flux file is not on Jan. 1.")
+
+    # using floor here because we might not have output at jan 1, but we'll definitely have at least one time level per year
+    startYr = refYear + np.floor(daysSinceStart[0] / 365.0)
     finalYr = refYear + daysSinceStart[-1] / 365.0
+
     if (daysSinceStart[-1] / 365.0 != daysSinceStart[-1] // 365):
         sys.exit(f"Error: final time of flux output file is not on Jan. 1.: daysSinceStart={daysSinceStart[-1]}, xtime={xtime[-1]}" )
+
+    simulationStartTime = start_times[0].dt.strftime("%Y-%m-%d_%H:%M:%S").values
+    simulationStartDate = start_times[0].dt.strftime("%Y-%m-%d").values
     print(f"simulationStartTime={simulationStartTime}; simulationStartDate={simulationStartDate}; refYear={refYear}")
     print(f"start year={startYr}; final year={finalYr}")
 
@@ -137,8 +177,7 @@ def time_avg_flux_vars(input_path):
     ##years = np.trim_zeros(years)
     years = np.arange(startYr, finalYr) # we don't want the final year in the time array as a year to process - it's actually the end point of the previous year
 
-    timeBndsMin = np.ones((len(years),)) * 1.0e36
-    timeBndsMax = np.ones((len(years),)) * -1.0e36
+    timeBnds = np.ones((len(years), 2), dtype=int)
 
     avgSmb = np.zeros((len(years), nCells)) * np.nan
     avgCF = np.zeros((len(years), nCells)) * np.nan
@@ -153,9 +192,9 @@ def time_avg_flux_vars(input_path):
     #for j in range(5):
     for j in range(len(years)):
         # we want time bounds to span the full year
-        timeBndsMin[j] = (years[j] - refYear) * 365.0
-        timeBndsMax[j] = (years[j]+1.0 - refYear) * 365.0
-        print(f"     year index: {j}, year={years[j]}; timeBindsMin={timeBndsMin[j]}, timeBndsMax={timeBndsMax[j]}")
+        timeBnds[j, 0] = (years[j] - refYear) * 365.0
+        timeBnds[j, 1] = (years[j]+1.0 - refYear) * 365.0
+        print(f"     year index: {j}, year={years[j]}; timeBindsMin={timeBnds[j, 0]}, timeBndsMax={timeBnds[j, 1]}")
         sumYearSmb = 0
         sumYearBmb = 0
         sumYearDHdt = 0
@@ -184,7 +223,7 @@ def time_avg_flux_vars(input_path):
 
                 sumIceMask = sumIceMask + iceMask[i,:]
 
-                print(f"         year={years[j]}, decYears={decYears[i]}, daysSinceStart={daysSinceStart[j]}, xtime={xtime[i]}")
+                print(f"         year={years[j]}, decYears={decYears[i]:4.3f}, daysSinceStart={daysSinceStart[j]:.3f}, xtime={xtime[i]}")
 
 
         avgSmb[j,:] = sumYearSmb / sumYearTime
@@ -199,28 +238,69 @@ def time_avg_flux_vars(input_path):
 
     print("    write time averaged values")
 
-    print(f"avg shape={avgSmb.shape}, time shape={timeBndsMin.shape}")
-    out_data_vars = {
-                     'sfcMassBalApplied': (['Time', 'nCells'], avgSmb),
-                     'floatingBasalMassBalApplied':       (['Time', 'nCells'], avgBmbfl),
-                     'groundedBasalMassBalApplied':       (['Time', 'nCells'], avgBmbgr),
-                     #'dHdt':              (['Time', 'nCells'], avgDHdt),
+    print(f"avg shape={avgSmb.shape}, time shape={timeBnds[:, 0].shape}")
+    out_data_vars = {'sfcMassBalApplied': (['Time', 'nCells'], avgSmb),
+                     'floatingBasalMassBalApplied': (['Time', 'nCells'], avgBmbfl),
+                     'groundedBasalMassBalApplied': (['Time', 'nCells'], avgBmbgr),
                      'fluxAcrossGroundingLineOnCells': (['Time', 'nCells'], avgGF),
                      'calvingThickness': (['Time', 'nCells'], avgCF),
                      'faceMeltingThickness': (['Time', 'nCells'], avgFM),
-                     #'iceMask':        (['Time', 'nCells'], maxIceMask),
-                     'timeBndsMin': (['Time'], timeBndsMin),
-                     'timeBndsMax': (['Time'], timeBndsMax),
+                     'Time_bnds': (['Time', 'bnds'], timeBnds),
                      }
+
+    out_data_attrs = {
+        'Time': {
+            'units': f'days since {refYear}-01-01',
+            'calendar': 'noleap',
+        },
+        'sfcMassBalApplied': {
+            'units': "kg m^{-2} s^{-1}",
+            'long_name': "annual average of the applied surface mass balance"
+        },
+        'floatingBasalMassBalApplied': {
+            'units': "kg m^{-2} s^{-1}",
+            'long_name': "annual average of the applied basal mass balance on floating regions",
+        },
+        'groundedBasalMassBalApplied': {
+            'units': "kg m^{-2} s^{-1}",
+            'long_name': "annual average of the applied basal mass balance on grounded regions"
+        },
+        'fluxAcrossGroundingLineOnCells': {
+            'units': "kg m^{-2} s^{-1}",
+            'long_name': ("annual average of flux across grounding line per unit area normal "
+                         "to a vertical plan aligned with the grounding line. "
+                         "This variable is calculated on cells and is for the "
+                         "purposes of reporting the ISMIP6 variable ligroundf. "
+                         "Positive means flux goes from grounded to floating ice.")
+        },
+        'calvingThickness': {
+            'units': "m s^{-1}",
+            'long_name': "annual average of thickness of ice that calves over a given year"
+        },
+        'faceMeltingThickness': {
+            'units': "m s^{-1}",
+            'long_name': ("annual average of equivalent plan-view averaged thickness"
+                         "of ice that melts over a given year from front ablation")
+        },
+    }
+
     print("PRINTING VARS")
     for varname, var in out_data_vars.items():
         print(varname, var[1].shape)
+
     print(ds_in['simulationStartTime'])
-    out_coords = {
-                  'Time':   (['Time'], (timeBndsMin+timeBndsMax)/2.0)
+
+    out_coords = {'Time': (['Time'], (np.mean(timeBnds, axis=1).astype(int))),
+                  'bnds': ([0, 1])
                  }
-    print('time length', (timeBndsMin+timeBndsMax).shape)
+
+    print('time length', timeBnds.shape[0])
     ds_out = xr.Dataset(data_vars=out_data_vars, coords=out_coords)
+
+    # add the dataarray attributes
+    for var in out_data_attrs:
+        ds_out[var].attrs = out_data_attrs[var]
+
     ds_out = ds_out.astype('float32')
     ds_in.close()
     return ds_out
@@ -237,8 +317,8 @@ def clean_flux_fields_before_time_averaging(file_input, file_mesh,
     data = xr.open_dataset(file_input, decode_cf=False) # need decode_cf=False to prevent xarray from reading daysSinceStart as a timedelta type.
     if 'units' in data.daysSinceStart.attrs:
         del data.daysSinceStart.attrs['units'] # need this line to prevent xarray from reading daysSinceStart as a timedelta type.
-    time = data.dims['Time']
-    nCells = data.dims['nCells']
+    time = data.sizes['Time']
+    nCells = data.sizes['nCells']
     nEdgesOnCell = data['nEdgesOnCell'][:].values
     edgesOnCell = data['edgesOnCell'][:].values
     cellsOnCell = data['cellsOnCell'][:].values
@@ -331,7 +411,7 @@ def clean_flux_fields_before_time_averaging(file_input, file_mesh,
 
             prev_t = max(t-1, 0)  # ensure that index_cf never uses thickness from last (-1) time step
             index_cf = np.where((faceMeltingThickness[t, :] > 0.0) * (bed[:] < 0.0) *
-                                (faceMeltingThickness[t, :] != thickness[prev_t, :]) * 
+                                (faceMeltingThickness[t, :] != thickness[prev_t, :]) *
                                 (thickness[prev_t, :] > 0.))[0]
             for i in index_cf:
                 # faceMeltSpeed is calculated for ice below water line, but needs to be aplied
