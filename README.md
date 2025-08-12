@@ -13,32 +13,32 @@ The ensemble was set up using compass:
 
 ## Ensemble management:
 
-ismip6_ais_proj2300_4km_nersc.cfg - compass cfg file used in command above
+* ismip6_ais_proj2300_4km_nersc.cfg - compass cfg file used in command above
 
-broadcast_file_to_ens_members.sh - helper script to copy a file to all
+* broadcast_file_to_ens_members.sh - helper script to copy a file to all
 ensemble members in a subset if things weren't set up quite right
 
-update_namelist_in_ens_members.sh - helper script to update namelist for all
+* update_namelist_in_ens_members.sh - helper script to update namelist for all
 runs in an ensemble subset if things weren't set up quite right
 
-job_script_all.sh - example batch script to run up to 8 simulations bundled
+* job_script_all.sh - example batch script to run up to 8 simulations bundled
 together to make more effective use of queue
 
-submit_all_exps.sh - script to submit jobs for all runs in an ensemble subset.
+* submit_all_exps.sh - script to submit jobs for all runs in an ensemble subset.
 Alternative workflow to job_script_all.sh 
 
 
 ## Post-processing:
 
-organize_anova_ensemble.py - copy global or regional stats files from all
+* organize_anova_ensemble.py - copy global or regional stats files from all
 simulations in ensemble and rename them with a naming convention for analysis
 
-anova_analysis.py - perform anova analysis and create anova plots.  Assumes
+* anova_analysis.py - perform anova analysis and create anova plots.  Assumes
 data has been organized using organize_anova_ensemble.py
 
 
 ## Archiving:
 
-archive_ensemble.sh - in progress
+* archive_ensemble.sh - in progress
 
-process_output_for_archiving.py - in progress
+* process_output_for_archiving.py - in progress
