@@ -141,8 +141,8 @@ def time_avg_flux_vars(input_path):
     timeBndsMax = np.ones((len(years),)) * -1.0e36
 
     avgSmb = np.zeros((len(years), nCells)) * np.nan
-    sumCF = np.zeros((len(years), nCells)) * np.nan
-    sumFM = np.zeros((len(years), nCells)) * np.nan
+    avgCF = np.zeros((len(years), nCells)) * np.nan
+    avgFM = np.zeros((len(years), nCells)) * np.nan
     avgBmbfl = np.zeros((len(years), nCells)) * np.nan
     avgBmbgr = np.zeros((len(years), nCells)) * np.nan
     avgDHdt = np.zeros((len(years), nCells)) * np.nan
@@ -191,8 +191,8 @@ def time_avg_flux_vars(input_path):
         avgBmbfl[j,:] = sumYearBmbfl / sumYearTime
         avgBmbgr[j,:] = sumYearBmbgr / sumYearTime
         avgDHdt[j,:] = sumYearDHdt / sumYearTime
-        sumCF[j,:] = sumYearCF / sumYearTime
-        sumFM[j,:] = sumYearFM / sumYearTime
+        avgCF[j,:] = sumYearCF / sumYearTime
+        avgFM[j,:] = sumYearFM / sumYearTime
         avgGF[j,:] = sumYearGF / sumYearTime
         maxIceMask[j,:] = (sumIceMask>0) # Get mask for anywhere that had ice during this year
 
@@ -206,8 +206,8 @@ def time_avg_flux_vars(input_path):
                      'groundedBasalMassBalApplied':       (['Time', 'nCells'], avgBmbgr),
                      #'dHdt':              (['Time', 'nCells'], avgDHdt),
                      'fluxAcrossGroundingLineOnCells': (['Time', 'nCells'], avgGF),
-                     'calvingThickness': (['Time', 'nCells'], sumCF),
-                     'faceMeltingThickness': (['Time', 'nCells'], sumFM),
+                     'calvingThickness': (['Time', 'nCells'], avgCF),
+                     'faceMeltingThickness': (['Time', 'nCells'], avgFM),
                      #'iceMask':        (['Time', 'nCells'], maxIceMask),
                      'timeBndsMin': (['Time'], timeBndsMin),
                      'timeBndsMax': (['Time'], timeBndsMax),
