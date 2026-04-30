@@ -81,7 +81,7 @@ def process_state_files(input_path):
 
     vars = [
         'thickness',
-        'lowerSurface',
+        #'lowerSurface',
         'xvelmean',
         'yvelmean',
         'basalTemperature',

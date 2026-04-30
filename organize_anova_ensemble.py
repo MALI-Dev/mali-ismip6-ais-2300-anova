@@ -1,6 +1,7 @@
 import glob
 import os
 import shutil
+import sys
 
 from matplotlib import pyplot as plt
 from matplotlib.lines import Line2D
@@ -10,21 +11,19 @@ import xarray as xr
 plot_time_series = True
 rhoi = 910.0
 
-#dataset_destination = '/pscratch/sd/h/hoffman2/anova-results'
-dataset_destination = '/global/cfs/cdirs/fanssie/users/hoffman2/mali/ais2300-anova-results'
+dataset_destination = '/global/cfs/cdirs/fanssie/users/hoffman2/mali/ais2300-anova-results/ais2300-anova-results-2025-07-11'
 
 runsets_base = '/pscratch/sd/h/hoffman2/ismip6_ais_2300_4kmDI_anova_ensemble_gpu'
 
-rgn = -1 # global stats
+#rgn = -1 # global stats
 #rgn = 14 # FRIS
 #rgn = 7 # Ross
 #rgn = 9 # TG/PIG
 rgn = 2 # Amery
 
-if rgn >= 0:
-    dataset_destination = os.path.join(dataset_destination, f'region{rgn}')
-    if not os.path.exists(dataset_destination):
-        os.mkdir(dataset_destination)
+dataset_destination = os.path.join(dataset_destination, f'region{rgn}')
+if not os.path.exists(dataset_destination):
+    os.mkdir(dataset_destination)
 
 ens_info = list()
 
@@ -67,6 +66,12 @@ for runset in sorted(glob.glob(os.path.join(runsets_base, 'q*m*'))):
                     }
         ens_info.append(run_dict)
 
+        output_path = os.path.join(runpath, 'output', 'output_state_2285.nc')
+        if os.path.isfile(output_path):
+            print("OUTPUT FOUND")
+        else:
+            print("OUTPUT MISSING!!!!!!")
+
         # copy globalStats to common location with naming convention
         if rgn < 0:
             stat_path1 = os.path.join(runpath, 'output', 'globalStats.nc.cleaned')
@@ -103,6 +108,7 @@ for runset in sorted(glob.glob(os.path.join(runsets_base, 'q*m*'))):
                 ds_out['volumeAboveFloatation'] = ds.regionalVolumeAboveFloatation[inds, rgn]
             ds_out.to_netcdf(os.path.join(dataset_destination,
                                           f'{std_name}.nc'))
+
 
 # plot end year for all runs
 fig_duration = plt.figure(1, figsize=(8, 8), facecolor='w')

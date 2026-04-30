@@ -14,9 +14,10 @@ from statsmodels.formula.api import ols
 
 interactions = 2
 
-dataset_path = '/global/cfs/cdirs/fanssie/users/hoffman2/mali/ais2300-anova-results/region2'
+dataset_path = '/global/cfs/cdirs/fanssie/users/hoffman2/mali/ais2300-anova-results/ais2300-anova-results-2025-07-11/region2'
 rhoi = 910.0
 rhosw = 1028.0
+plot_full = False  # full size and with legend.  Set to True for global plot and False for regional ones
 
 
 file_list = sorted(glob.glob(os.path.join(dataset_path, '*nc')))
@@ -119,7 +120,7 @@ for yr_idx, yr in enumerate(year_list):
     r2[yr_idx] = model.rsquared
 
     anova_out = sm.stats.anova_lm(model, typ=2)
-    #print(anova_out)
+    print(anova_out)
     idx = 0
     var_q[yr_idx] = anova_out.sum_sq[idx] / (n_valid - 1)
     idx += 1
@@ -172,8 +173,16 @@ if interactions >= 4:
 
 # Extract the first 4 colors from Set1 and the first 6 from Set3
 set1_colors = list(plt.get_cmap('Set1').colors[:4])
+set1_colors = ['deepskyblue', 'royalblue', 'lightcoral', 'gold']
 set3_colors = list(plt.get_cmap('Set3').colors[:6+1])
 set3_colors.pop(1)  # Remove the second color (index 1)  This yellow is hard to see
+#set3_colors.reverse()
+
+set3_colors = [
+    "#F49AC2", "#FFD1DC", "#C5E384",
+    "#FFB347", "#B39EB5", "#77DD77",
+]
+set3_colors.reverse()
 
 # Combine the colors and add 'gray'
 custom_colors = set1_colors + set3_colors + ['gray']
@@ -181,7 +190,10 @@ custom_colors = set1_colors + set3_colors + ['gray']
 # Set the color cycle for plots
 plt.rcParams['axes.prop_cycle'] = cycler(color=custom_colors)
 
-fig = plt.figure(1, figsize=(10, 8), facecolor='w')
+if plot_full:
+    fig = plt.figure(1, figsize=(8.5, 6.5), facecolor='w')
+else:
+    fig = plt.figure(1, figsize=(6, 5), facecolor='w')
 nrow = 2
 ncol = 1
 
@@ -194,15 +206,15 @@ ls4=':'
 ax1.plot(year_list, np.sqrt(var_all), label='all', color='k', linewidth=thk, linestyle='-')
 ax1.plot(year_list, np.sqrt(var_tot), label='total', color='gray', linewidth=thk, linestyle=':')
 ax1.plot(year_list, np.sqrt(var_q), label='q', linewidth=thk)
-ax1.plot(year_list, np.sqrt(var_m), label='m', linewidth=thk)
+ax1.plot(year_list, np.sqrt(var_m), label=r'$\gamma_0$', linewidth=thk)
 ax1.plot(year_list, np.sqrt(var_e), label='e', linewidth=thk)
 ax1.plot(year_list, np.sqrt(var_h), label='h', linewidth=thk)
 if interactions >= 2:
-    ax1.plot(year_list, np.sqrt(var_qm), label='qm', linewidth=thn, linestyle=ls2)
+    ax1.plot(year_list, np.sqrt(var_qm), label=r'q$\gamma_0$', linewidth=thn, linestyle=ls2)
     ax1.plot(year_list, np.sqrt(var_qe), label='qe', linewidth=thn, linestyle=ls2)
     ax1.plot(year_list, np.sqrt(var_qh), label='qh', linewidth=thn, linestyle=ls2)
-    ax1.plot(year_list, np.sqrt(var_me), label='me', linewidth=thn, linestyle=ls2)
-    ax1.plot(year_list, np.sqrt(var_mh), label='mh', linewidth=thn, linestyle=ls2)
+    ax1.plot(year_list, np.sqrt(var_me), label=r'$\gamma_0$e', linewidth=thn, linestyle=ls2)
+    ax1.plot(year_list, np.sqrt(var_mh), label=r'$\gamma_0$h', linewidth=thn, linestyle=ls2)
     ax1.plot(year_list, np.sqrt(var_eh), label='eh', linewidth=thn, linestyle=ls2)
 if interactions >= 3:
     ax1.plot(year_list, np.sqrt(var_qme), label='qme', linewidth=thn, linestyle=ls3)
@@ -215,19 +227,20 @@ ax1.plot(year_list, np.sqrt(var_res), label='3- & 4-way', linewidth=2, color='gr
 ax1.set_xlim([2000, 2300])
 plt.xlabel('Year')
 plt.ylabel(r'$\sigma$ (m SLE)')
-plt.annotate('a', (-0.08, 1.0), xycoords='axes fraction', fontsize='x-large', fontweight='bold')
-plt.legend(bbox_to_anchor = (1.2, 1.0), loc='upper right')
+if plot_full:
+    plt.annotate('a', (-0.12, 0.95), xycoords='axes fraction', fontsize='x-large', fontweight='bold')
+    plt.legend(bbox_to_anchor = (1.3, 1.0), loc='upper right')
 
 # fractional variance
 ax2 = fig.add_subplot(nrow, ncol, 2, sharex=ax1)
 stackdata = np.stack([var_q, var_m, var_e, var_h])
-labels=list(('q', 'm', 'e', 'h'))
+labels=list(('q', r'$\gamma_0$', 'e', 'h'))
 if interactions >= 2:
     stackdata = np.vstack([stackdata,
                            var_qm, var_qe, var_qh,
                            var_me, var_mh, var_eh])
-    labels.extend(('qm', 'qe', 'qh',
-                   'me', 'mh', 'eh'))
+    labels.extend((r'q$\gamma_0$', 'qe', 'qh',
+                   r'$\gamma_0$e', r'$\gamma_0$h', 'eh'))
 if interactions >= 3:
     stackdata = np.vstack([stackdata,
                            var_qme, var_qmh, var_qeh, var_meh])
@@ -244,8 +257,12 @@ ax2.stackplot(year_list, stackdata, labels=labels)
 ax2.set_ylim([0, 100])
 plt.xlabel('Year')
 plt.ylabel(r'Percentage of variance ($\sigma^2$)')
-plt.annotate('b', (-0.08, 1.0), xycoords='axes fraction', fontsize='x-large', fontweight='bold')
-plt.legend(bbox_to_anchor = (1.2, 1.0), loc='upper right')
+if plot_full:
+    plt.annotate('b', (-0.12, 0.95), xycoords='axes fraction', fontsize='x-large', fontweight='bold')
+    plt.legend(bbox_to_anchor = (1.3, 1.0), loc='upper right')
+
+#ax2.stackplot(year_list, stackdata[:4,:], hatch='x')
+ax2.plot(year_list, stackdata[:4,:].sum(axis=0), 'k:')
 
 plt.tight_layout()
 plt.draw()
